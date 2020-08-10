@@ -1,2 +1,2 @@
 # csl
-Cooperative Secure Learning
+DARPA Cooperative Secure Learning
