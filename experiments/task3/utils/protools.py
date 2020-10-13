@@ -1,31 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Sep  3 21:00:53 2020
-
-protools: prototyping tools and helper methods.
-
+protools.py prototyping tools and helper methods.
 
 ImageFolder datasets:
-    + imagenette
+    + imagenette: https://github.com/fastai/imagenette
     + imagenet
 
-imagenette classes:
-    tench,
-    English springer,
-    cassette player,
-    chain saw,
-    church,
-    French horn,
-    garbage truck,
-    gas pump,
-    golf ball,
-    parachute
-
-    dataset[0] = (torch.tensor: image (d,w,h), int: target)
-    dataset[0][0]: torch.tensor, image (d,w,h)
-    dataset[0][1]: int, target label
-
+@author: carlos.torres <carlos.torres@twosixlabs.com>
 """
 import os
 import logging
