@@ -40,7 +40,7 @@ torch.cuda.set_device(0)
 # DATASETS AND DIMENSIONS
 IMAGE_DIMS = {
     "imagenet": 32,  # 224
-    "imagenette": 32,  # 224
+    "imagenette": 128,  # 32,  # 224
     "mnist": 28,
     "fashion-mnist": 28,
     "cifar10": 32,
@@ -48,13 +48,13 @@ IMAGE_DIMS = {
 }
 
 # THE DATASET
-DATASET_NAME = "cifar10"
-BATCH_SIZE = 64
+DATASET_NAME = "imagenette"
+BATCH_SIZE = 16
 CLASS_IDX = 0
 
-# VAE PARAMS
-DIM_LATENT = 204
-N_EPOCHS = 15
+# VAE PARAMS -- EXAMPLE
+DIM_LATENT = 205  # using 20% of the info: 205 ~ 32 * 32 * .2
+N_EPOCHS = 150
 H_DIM1 = 512
 H_DIM2 = 256
 
@@ -65,6 +65,7 @@ class VAE(nn.Module):
 
     def __init__(self, x_dim, h_dim1, h_dim2, z_dim):
         super(VAE, self).__init__()
+        self.x_dim = x_dim
 
         # encoder
         self.fc1 = nn.Linear(x_dim, h_dim1)
@@ -93,7 +94,7 @@ class VAE(nn.Module):
         return torch.sigmoid(self.fc6(h))
 
     def forward(self, x) -> (float, float, float):
-        mu, log_var = self.encoder(x.view(-1, x_dim))
+        mu, log_var = self.encoder(x.view(-1, self.x_dim))
         z = self.sampling(mu, log_var)
         return self.decoder(z), mu, log_var
 
@@ -121,7 +122,7 @@ def loss_function(recon_x, x, mu, log_var, eta=0.1) -> float:
     kld = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
     return bce + eta * kld
 
-def train(vae, epoch, train_loader):
+def train(vae, epoch, train_loader, optimizer):
     """
     Parameters
     ----------
@@ -329,7 +330,8 @@ def encode_data(vae, data_iterator, dim_latent: int, dataset_name: str, save: bo
     return means, variances, data_labels, batch_latents, z
 
 
-def reconstruct(vae, batch_latents: list, d: int, w: int, h: int,
+def reconstruct(vae, batch_latents: list, data_labels: list,
+                d: int, w: int, h: int,
                 dataset_name: str, save=False, disp=True,
                 n_samples: int = None, task: str = "test"):
     """
@@ -390,12 +392,10 @@ def reconstruct(vae, batch_latents: list, d: int, w: int, h: int,
                 sample_counter += 1
 
 
-#%%
-
-if __name__=="__main__":
+def run_example(model_dir):
     num_workers = 4
     batch_size = BATCH_SIZE
-    confirm_directory(MODEL_DIR)
+    confirm_directory(model_dir)
     image_dim = IMAGE_DIMS[DATASET_NAME]
 
     # dataloaders
@@ -420,7 +420,6 @@ if __name__=="__main__":
     # weight initialization
     vae.apply(init_kaiming)  # init_xavier,
     vae = vae.cuda()
-    # print(vae)
 
     optimizer = optim.Adam(vae.parameters(), lr=0.001)
     # optimizer = optim.RMSprop(vae.parameters(), lr=0.001, centered=True)
@@ -428,16 +427,16 @@ if __name__=="__main__":
     train_hist = []
     val_hist = []
     for epoch in range(1, N_EPOCHS + 1):
-        vae, train_loss = train(vae, epoch, train_loader)
+        vae, train_loss = train(vae, epoch, train_loader, optimizer)
         val_loss = test(vae, test_loader)
         train_hist.append(train_loss)
         val_hist.append(val_loss)
 
         if epoch % 10 == 0:
-            MODEL_PATH = f"{MODEL_DIR}{DATASET_NAME}_{DIM_LATENT}components_{epoch}epoch.pth"
+            MODEL_PATH = f"{model_dir}{DATASET_NAME}_{DIM_LATENT}components_{epoch}epoch.pth"
             torch.save(vae.state_dict(), MODEL_PATH)
-    MODEL_DIR = "test/models/vae/"
-    MODEL_PATH = f"{MODEL_DIR}{DATASET_NAME}_{CLASS_IDX}class_{DIM_LATENT}components_{epoch}epoch-FINAL.pth"
+    model_dir = "test/models/vae/"
+    MODEL_PATH = f"{model_dir}{DATASET_NAME}_{CLASS_IDX}class_{DIM_LATENT}components_{epoch}epoch-FINAL.pth"
     torch.save(vae.state_dict(), MODEL_PATH)
 
     # plot the losses
@@ -455,7 +454,7 @@ if __name__=="__main__":
     log.info(f">>> Training, and Evaluation processes for: \
     \n\t VAE using {DATASET_NAME}\n are complete")
 
-    # == USE THE MODEL TO RECONSTRUCT MAGES
+    # == Example use #1: USE THE MODEL TO COMPRESS and RECONSTRUCT IMAGES
     # random_data_synthesizer(vae, n_digits=3, dim_latent=dim_latent, selection=None)
     means, variances, data_labels, batch_latents, z = encode_data(
         vae,
@@ -465,23 +464,27 @@ if __name__=="__main__":
         save=True,
         disp=False
     )
-    #%%
-    # test with small sample of size n_digits
-    n_test_samples = 10
-    subset_means = means[:n_test_samples]  # assumes single channel images
-    subset_variances = variances[:n_test_samples]
-    subset_labels = data_labels[:n_test_samples]
-    # decode_data(vae, subset_means, subset_variances, subset_labels, d, w, h, DATASET_NAME, save=True, disp=True)
-    # alternatively do all
-    #%% decode_data(vae, means, variances, data_labels, w, h, save=True, disp=True)
-    reconstruct(vae, batch_latents, d, w, h, DATASET_NAME, save=True, disp=False, n_samples=None)
 
-    #%%
-    # means.shape = (len(dataset), DIM_LATENT)
-    # variances.shape = (len(dataset), DIM_LATENT)
+    n_test_samples = 10  # test with small sample of size n_digits
+    n_test_samples = None  # all
 
-    starts = [r for r in range(0, len(subset_means) - d, d)]
-    ends = [r + d for r in range(0, len(subset_variances) - d, d)]
+    reconstruct(
+        vae,
+        batch_latents,
+        data_labels,
+        d,
+        w,
+        h,
+        DATASET_NAME,
+        save=True,
+        disp=False,
+        n_samples=n_test_samples
+    )
+
+    # means.shape = (len(dataset)* d, DIM_LATENT)
+    # variances.shape = (len(dataset) * d, DIM_LATENT)
+    starts = [r for r in range(0, len(means) - d, d)]
+    ends = [r + d for r in range(0, len(variances) - d, d)]
 
     # single sample
     start = starts[0]
@@ -501,3 +504,8 @@ if __name__=="__main__":
     sample = sample.detach()
     image_tensor = sample.view(d, w, h).cpu()
     show(image_tensor, plot_title="Reconstructed sample.")
+
+
+if __name__=="__main__":
+    model_dir = MODEL_DIR
+    run_example(model_dir)
