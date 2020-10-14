@@ -15,22 +15,24 @@ Created on Thu Sep  3 16:57:24 2020
 python vae-synthesizer
 @author: carlos-torres
 """
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torchvision
-from torchvision.utils import save_image
-import torch.nn.functional as F
-
-import matplotlib.pyplot as plt
-import numpy as np
+import os
 import math
-
-from utils.protools import create_dataloaders, confirm_directory
-
 import logging
 import coloredlogs
+import numpy as np
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+import torch
+import torchvision
+import torch.nn as nn
+import torch.optim as optim
+from torchvision.utils import save_image
+import torch.nn.functional as F
+from torch.autograd import Variable
+
+from synthesizers.vaes import VAE
+from utils.protools import create_dataloaders, confirm_directory
 
 log = logging.getLogger("vae_synth")
 coloredlogs.install(level="info", logger=log)
@@ -40,63 +42,28 @@ torch.cuda.set_device(0)
 # DATASETS AND DIMENSIONS
 IMAGE_DIMS = {
     "imagenet": 32,  # 224
-    "imagenette": 128,  # 32,  # 224
+    "imagenette": 32,  # 224
     "mnist": 28,
     "fashion-mnist": 28,
     "cifar10": 32,
-    "stl10": 32,
+    # "stl10": 32,  # TODO
 }
 
 # THE DATASET
-DATASET_NAME = "imagenette"
-BATCH_SIZE = 16
-CLASS_IDX = 0
+DATASET_NAME = "cifar10"
+BATCH_SIZE = 64
+CLASS_IDX = None
+FIDELITY = 1  # percent ratio for reconstruction (between: > 0.0 and <= 1.0)
 
 # VAE PARAMS -- EXAMPLE
-DIM_LATENT = 205  # using 20% of the info: 205 ~ 32 * 32 * .2
-N_EPOCHS = 150
+DIM_LATENT = 10  #  int(IMAGE_DIMS[DATASET_NAME]**2 * FIDELITY)  # using 20% of the info: 205 ~ 32 * 32 * .2
+N_EPOCHS = 200
 H_DIM1 = 512
 H_DIM2 = 256
 
-# save the torch model
-MODEL_DIR = f"test/models/vae/temps/{DATASET_NAME}/{CLASS_IDX}"
+class_idx = "all" if CLASS_IDX is None else CLASS_IDX
+save_every_epochs = 5  # 5
 
-class VAE(nn.Module):
-
-    def __init__(self, x_dim, h_dim1, h_dim2, z_dim):
-        super(VAE, self).__init__()
-        self.x_dim = x_dim
-
-        # encoder
-        self.fc1 = nn.Linear(x_dim, h_dim1)
-        self.fc2 = nn.Linear(h_dim1, h_dim2)
-        self.fc31 = nn.Linear(h_dim2, z_dim)
-        self.fc32 = nn.Linear(h_dim2, z_dim)
-
-        # decoder
-        self.fc4 = nn.Linear(z_dim, h_dim2)
-        self.fc5 = nn.Linear(h_dim2, h_dim1)
-        self.fc6 = nn.Linear(h_dim1, x_dim)
-
-    def encoder(self, x) -> (float, float):
-        h = F.relu(self.fc1(x))
-        h = F.relu(self.fc2(h))
-        return self.fc31(h), self.fc32(h)  # -> (mu, log_var)
-
-    def sampling(self, mu, log_var) -> float:
-        std = torch.exp(0.5 * log_var)
-        eps = torch.randn_like(std)
-        return eps.mul(std).add_(mu)  # -> z sample
-
-    def decoder(self, z) -> float:
-        h = F.relu(self.fc4(z))
-        h = F.relu(self.fc5(h))
-        return torch.sigmoid(self.fc6(h))
-
-    def forward(self, x) -> (float, float, float):
-        mu, log_var = self.encoder(x.view(-1, self.x_dim))
-        z = self.sampling(mu, log_var)
-        return self.decoder(z), mu, log_var
 
 def loss_function(recon_x, x, mu, log_var, eta=0.1) -> float:
     """
@@ -121,6 +88,7 @@ def loss_function(recon_x, x, mu, log_var, eta=0.1) -> float:
     # bce = F.binary_cross_entropy_with_logits(recon_x, x.view(-1, recon_x.shape[1]), reduction="sum")
     kld = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
     return bce + eta * kld
+
 
 def train(vae, epoch, train_loader, optimizer):
     """
@@ -163,7 +131,7 @@ def train(vae, epoch, train_loader, optimizer):
         optimizer.step()
 
         if batch_idx % 100 == 0:
-            log.info(
+            log.debug(
                 f"Train Epoch: {epoch} "
                 f"[{batch_idx * len(data)} / {len(train_loader.dataset)} "
                 f"({100. * batch_idx / len(train_loader):.0f}%)]"
@@ -171,7 +139,7 @@ def train(vae, epoch, train_loader, optimizer):
             )
     epoch_loss = train_loss / len(train_loader.dataset)
     log.info(
-        f"====> Epoch: {epoch} Average loss: {epoch_loss: .4f}"
+        f"====> Epoch: {epoch} Average Train loss: {epoch_loss: .4f}"
     )
     return vae, epoch_loss
 
@@ -232,7 +200,7 @@ def init_kaiming(m):
 
 
 def visualize_batch(batch, plot_title: str = None, grid_dims: int = 4):
-    batch = torchvision.utils.make_grid(batch).numpy()
+    batch = torchvision.utils.make_grid(batch).cpu().numpy()
     batch = np.transpose(batch, (1, 2, 0))
     plt.figure(figsize=(grid_dims, grid_dims))
     plt.imshow(batch, cmap='Greys_r')
@@ -242,6 +210,9 @@ def visualize_batch(batch, plot_title: str = None, grid_dims: int = 4):
         title = "Batch visualization"
     plt.title(title)
     plt.show()
+    # if save_path is not None:
+    #     save_image(save_path)
+    #     print(f"Sampled generated grid saved to '{save_path}'")
 
 def show(img, plot_title: str = None):
     batch = img.numpy()
@@ -292,8 +263,7 @@ def encode_data(vae, data_iterator, dim_latent: int, dataset_name: str, save: bo
             labels = list(labels.numpy())
             data_labels.extend(labels)
             log.debug(f" > Processing the {b}-th batch with {len(labels)}-data")
-            if disp:
-                visualize_batch(batch, plot_title=f"Visualized {b}-Batch", grid_dims=4)
+
             batch = batch.cuda()
             recon, mean, log_var = vae(batch)
 
@@ -309,11 +279,15 @@ def encode_data(vae, data_iterator, dim_latent: int, dataset_name: str, save: bo
             recons_img = reconstructed_batch.view(len(batch), d, w, h)
 
             if save:
-                directory = f"test/data/{dataset_name}/{CLASS_IDX}/grid_batches/"
+                directory = f"test/data/{dataset_name}/{class_idx}/{class_idx}_grid_batches/"
                 confirm_directory(directory)
-                log.info(f"Synthesizing the {b}-th random-sampled batch")
+                log.debug(f"Synthesizing the {b}-th random-sampled batch")
                 save_image(orig_img, f'{directory}orig_grid_sample_{b}.png')
                 save_image(recons_img, f'{directory}recons_grid_sample_{b}.png')
+
+            if disp:
+                visualize_batch(batch, plot_title=f"Visualized {b}-Batch", grid_dims=4)
+                visualize_batch(recons_img, plot_title=f"Reconstructed {b}-Batch", grid_dims=8)
 
             mean = mean.cpu().numpy()
             var = log_var.cpu().numpy()
@@ -361,7 +335,7 @@ def reconstruct(vae, batch_latents: list, data_labels: list,
                 mu = batch[0][start: end]
                 log_var = batch[1][start: end]
                 label = data_labels[sample_counter]
-                log.info(
+                log.debug(
                     f"Synthesizing the ({j}-th item from the {b}-th batch "
                     f"of {len(batch[0])} batches) {sample_counter}-sample "
                     f"for '{label}' label"
@@ -375,7 +349,7 @@ def reconstruct(vae, batch_latents: list, data_labels: list,
 
                 if save:
                     # directory=f"test/data/{dataset_name}/{CLASS_IDX}/{task}/{label}/"
-                    directory=f"test/data/{dataset_name}/{CLASS_IDX}/samples/"
+                    directory=f"test/data/{dataset_name}/{class_idx}/{class_idx}_reconstructed/"
                     confirm_directory(directory)
                     recon_image_path = f'{directory}label_{label}_sample_{sample_counter}.png'
                     save_image(image.cpu(), recon_image_path)
@@ -392,6 +366,32 @@ def reconstruct(vae, batch_latents: list, data_labels: list,
                 sample_counter += 1
 
 
+def generate_samples(vae, n_samples, n: int, d: int, directory: str, disp: bool = False, save: bool = False):
+    """
+    # PENDING
+    """
+    vae.cuda()
+    vae.eval()
+
+    mu = Variable(torch.randn(n_samples * d, DIM_LATENT))
+    log_var = Variable(torch.randn(n_samples * d, DIM_LATENT))
+
+    with torch.no_grad():
+        # vae.cpu()
+        z = vae.sampling(mu, log_var)
+        z = z.cuda()
+        samples = vae.decoder(z)
+        samples = samples.view(-1, d, h, w).cpu()
+    if disp:
+        plot_title = f"Random-sampled batch {DATASET_NAME} dataset"
+        visualize_batch(samples.detach(), plot_title=plot_title, grid_dims=8)
+
+    if save:
+        directory=f"test/data/{DATASET_NAME}/{class_idx}/{class_idx}_sampled_grids/"
+        save_path=f"{directory}grid_{n}.png"
+        save_image(image_tensor, save_path)
+
+
 def run_example(model_dir):
     num_workers = 4
     batch_size = BATCH_SIZE
@@ -404,7 +404,7 @@ def run_example(model_dir):
         batch_size=batch_size,
         input_size=image_dim,
         num_workers=num_workers,
-        class_idx=CLASS_IDX,
+        class_idx=class_idx,
     )
     batch, labels = iter(train_loader).next()
 
@@ -421,7 +421,7 @@ def run_example(model_dir):
     vae.apply(init_kaiming)  # init_xavier,
     vae = vae.cuda()
 
-    optimizer = optim.Adam(vae.parameters(), lr=0.001)
+    optimizer = optim.Adam(vae.parameters(), lr=0.0001)
     # optimizer = optim.RMSprop(vae.parameters(), lr=0.001, centered=True)
     # optimizer = optim.SGD(vae.parameters(), lr=0.01, momentum=0.9)
     train_hist = []
@@ -436,7 +436,7 @@ def run_example(model_dir):
             MODEL_PATH = f"{model_dir}{DATASET_NAME}_{DIM_LATENT}components_{epoch}epoch.pth"
             torch.save(vae.state_dict(), MODEL_PATH)
     model_dir = "test/models/vae/"
-    MODEL_PATH = f"{model_dir}{DATASET_NAME}_{CLASS_IDX}class_{DIM_LATENT}components_{epoch}epoch-FINAL.pth"
+    MODEL_PATH = f"{model_dir}{DATASET_NAME}_{class_idx}class_{DIM_LATENT}components_{epoch}epoch-FINAL.pth"
     torch.save(vae.state_dict(), MODEL_PATH)
 
     # plot the losses
@@ -500,12 +500,158 @@ def run_example(model_dir):
 
         sample = vae.decoder(z.float())
 
-    #%%
+    #
     sample = sample.detach()
     image_tensor = sample.view(d, w, h).cpu()
     show(image_tensor, plot_title="Reconstructed sample.")
 
 
 if __name__=="__main__":
-    model_dir = MODEL_DIR
-    run_example(model_dir)
+# save the torch model
+    model_dir = f"test/checkpoints/vae/{DATASET_NAME}/{class_idx}/"
+    # model_dir = MODEL_DIR
+    # run_example(model_dir)
+
+    num_workers = 4
+    batch_size = BATCH_SIZE
+    confirm_directory(f"{model_dir}/temps/")
+    image_dim = IMAGE_DIMS[DATASET_NAME]
+
+    # dataloaders
+    train_loader, test_loader = create_dataloaders(
+        DATASET_NAME,
+        batch_size=batch_size,
+        input_size=image_dim,
+        num_workers=num_workers,
+        class_idx=CLASS_IDX,
+    )
+    batch, labels = iter(train_loader).next()
+
+    # reconstruction: (d)epth, (w)idth, (h)eight
+    d = batch.shape[1]
+    w = batch.shape[2]
+    h = batch.shape[3]
+    x_dim = w * h
+
+    # == THE VAE-MODEL
+    # FITTING/TRAINNG
+    vae = VAE(x_dim=x_dim, h_dim1=H_DIM1, h_dim2=H_DIM2, z_dim=DIM_LATENT)
+    # weight initialization
+    vae.apply(init_kaiming)  # init_xavier,
+    vae = vae.cuda()
+
+    optimizer = optim.Adam(vae.parameters(), lr=0.001)
+    # optimizer = optim.RMSprop(vae.parameters(), lr=0.001, centered=True)
+    # optimizer = optim.SGD(vae.parameters(), lr=0.01, momentum=0.9)
+    train_hist = []
+    val_hist = []
+    for epoch in range(1, N_EPOCHS + 1):
+        vae, train_loss = train(vae, epoch, train_loader, optimizer)
+        val_loss = test(vae, test_loader)
+        train_hist.append(train_loss)
+        val_hist.append(val_loss)
+        if epoch % save_every_epochs == 0:
+            temp_model_path = f"{model_dir}temps/{DATASET_NAME}_{DIM_LATENT}components_{epoch}epoch.pth"
+            torch.save(vae.state_dict(), temp_model_path)
+
+    temp_model_path = f"{model_dir}temps/{DATASET_NAME}_{DIM_LATENT}components_{epoch}epoch.pth"
+    torch.save(vae.state_dict(), temp_model_path)
+    # model_dir = "test/checkpoints/vae/"
+    model_path = f"{model_dir}{DATASET_NAME}_{CLASS_IDX}class_{DIM_LATENT}components_{epoch}epoch-FINAL.pth"
+    torch.save(vae.state_dict(), model_path)
+
+    # plot the losses
+    plt.plot(range(1, N_EPOCHS + 1), train_hist, label="Trained", marker="x")
+    plt.plot(range(1, N_EPOCHS + 1), val_hist, label="Validated", marker=".")
+
+    # Add Figure information
+    plt.title("Validation Accuracy vs. Number of Training Epochs")
+    plt.xlabel("Training Epochs")
+    plt.ylabel("Loss")
+    # plt.ylim((0, 1.))
+    plt.xticks(np.arange(1, N_EPOCHS + 1, 1.0))
+    plt.legend()
+    plot_name = f"{model_dir}{DATASET_NAME}_{CLASS_IDX}class_{DIM_LATENT}components.png"
+    plt.savefig(plot_name)
+    plt.show()
+    log.info(f">>> Training, and Evaluation processes for: \
+    \n\t VAE using {DATASET_NAME}\n are complete")
+
+    # == Example use #1: USE THE MODEL TO COMPRESS and RECONSTRUCT IMAGES
+    # random_data_synthesizer(vae, n_digits=3, dim_latent=dim_latent, selection=None)
+    means, variances, data_labels, batch_latents, z = encode_data(
+        vae,
+        test_loader,
+        DIM_LATENT,
+        DATASET_NAME,
+        save=True,
+        disp=False,
+    )
+    #%% Use the latent represenations to reconstructued encoded images
+    n_test_samples = 10  # test with small sample of size n_digits
+    # n_test_samples = None  # all
+    vae.cuda()
+    vae.eval()
+    reconstruct(
+        vae,
+        batch_latents,
+        data_labels,
+        d,
+        w,
+        h,
+        DATASET_NAME,
+        save=True,
+        disp=False,
+        n_samples=n_test_samples
+    )
+
+    # means.shape = (len(dataset)* d, DIM_LATENT)
+    # variances.shape = (len(dataset) * d, DIM_LATENT)
+    starts = [r for r in range(0, len(means) - d, d)]
+    ends = [r + d for r in range(0, len(variances) - d, d)]
+
+    # single sample
+    start = starts[0]
+    end = ends[0]
+
+    with torch.no_grad():
+        # reconstruction example:
+        mu = torch.as_tensor(means[start:end, :]).cuda().view(d, -1)
+        var = torch.as_tensor(variances[start:end, :]).cuda().view(d, -1)
+        z = vae.sampling(mu, var)
+        sample = vae.decoder(z.float())
+
+    sample = sample.detach()
+    image_tensor = sample.view(d, w, h).cpu()
+    show(image_tensor, plot_title="Reconstructed sample.")
+
+    #%% SAMPLE THE FITTED VAE MODEL TO PRODUCE COMPLETELY NEW SAMPLES
+    n_samples = BATCH_SIZE
+    mu = Variable(torch.randn(n_samples * d, DIM_LATENT))
+    log_var = Variable(torch.randn(n_samples * d, DIM_LATENT))
+
+    pth_directory = f"{model_dir}temps/"
+
+    pth_paths = sorted([os.path.join(pth_directory, file) for file in os.listdir(pth_directory) if file.endswith(".pth")])
+
+    for pth_path in pth_paths:
+        n = pth_path.split("/")[-1].split("_")[-1].split(".")[0]
+        # vae = VAE(x_dim=x_dim, h_dim1=H_DIM1, h_dim2=H_DIM2, z_dim=DIM_LATENT)
+        vae.load_state_dict(torch.load(pth_path))
+
+        vae.cuda()
+        vae.eval()
+        with torch.no_grad():
+            z = vae.sampling(mu, log_var)
+            z = z.cuda()
+            samples = vae.decoder(z)
+            samples = samples.view(-1, d, h, w).cpu()
+
+        plot_title = f"Random-sampled batch {DATASET_NAME} dataset"
+        directory = f"test/data/{DATASET_NAME}/{class_idx}/{class_idx}_sampled_grids/"
+        confirm_directory(directory)
+        # visualize_batch(samples.detach(), plot_title=plot_title, grid_dims=8)
+
+        # save_path=f"{directory}grid_2.png"
+        save_path = f"{directory}grid_{n}.png"
+        save_image(samples.cpu(), save_path)
