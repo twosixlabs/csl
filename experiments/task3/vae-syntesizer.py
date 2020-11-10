@@ -28,6 +28,7 @@ import torchvision
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image, make_grid
+
 # import torch.nn.functional as F
 from torch.autograd import Variable
 
@@ -56,7 +57,9 @@ BATCH_SIZE = 32
 FIDELITY = 1  # percent ratio for reconstruction (between: > 0.0 and <= 1.0)
 
 # VAE PARAMS -- EXAMPLE
-DIM_LATENT = int(IMAGE_DIMS[DATASET_NAME]**2 * FIDELITY)  # using 20% of the info: 205 ~ 32 * 32 * .2
+DIM_LATENT = int(
+    IMAGE_DIMS[DATASET_NAME] ** 2 * FIDELITY
+)  # using 20% of the info: 205 ~ 32 * 32 * .2
 N_EPOCHS = 3
 H_DIM1 = 512
 H_DIM2 = 256
@@ -69,6 +72,7 @@ DISP = False
 USE_PRETRAINED = False
 DATA_SRC = "train"
 # DATA_SRC = "val"
+
 
 def train(vae, epoch, train_loader, optimizer, class_idx):
     """
@@ -92,8 +96,11 @@ def train(vae, epoch, train_loader, optimizer, class_idx):
     train_loss = 0
     ttotal = len(train_loader)
     # for batch_idx, (data, _) in enumerate(train_loader):
-    for batch_idx, (data, _) in zip(tqdm(range(ttotal), desc=f"Train Batch {epoch} of {class_idx}-class"), train_loader):
-    # for batch_idx, (data, _) in enumerate(train_loader):
+    for batch_idx, (data, _) in zip(
+        tqdm(range(ttotal), desc=f"Train Batch {epoch} of {class_idx}-class"),
+        train_loader,
+    ):
+        # for batch_idx, (data, _) in enumerate(train_loader):
         data = data.cuda()
         optimizer.zero_grad()
 
@@ -102,10 +109,14 @@ def train(vae, epoch, train_loader, optimizer, class_idx):
         loss.backward()
         x = loss.item()
         if np.isnan(x):
-            log.debug(f"Epoch (before adj): {epoch}; batch_idx: {batch_idx} loss: {loss}")
+            log.debug(
+                f"Epoch (before adj): {epoch}; batch_idx: {batch_idx} loss: {loss}"
+            )
             # x = torch.where(torch.isnan(x), torch.zeros_like(x), x)
             x = 0
-            log.debug(f"    epoch (adfter adj): {epoch}; batch_idx: {batch_idx} loss: {loss}")
+            log.debug(
+                f"    epoch (adfter adj): {epoch}; batch_idx: {batch_idx} loss: {loss}"
+            )
         train_loss += x
 
         optimizer.step()
@@ -118,9 +129,7 @@ def train(vae, epoch, train_loader, optimizer, class_idx):
                 f"\t loss: {loss.item() / len(data):.6f}"
             )
     epoch_loss = train_loss / len(train_loader.dataset)
-    log.info(
-        f"====> Epoch: {epoch} Average Train loss: {epoch_loss: .4f}"
-    )
+    log.info(f"====> Epoch: {epoch} Average Train loss: {epoch_loss: .4f}")
     return vae, epoch_loss
 
 
@@ -171,10 +180,8 @@ def init_kaiming(m):
     if type(m) == nn.Linear:
         weights, bias = m.named_parameters()
         m.weight = torch.nn.Parameter(
-            torch.randn(
-                weights[1].shape[0],
-                weights[1].shape[1]
-            ) * math.sqrt(2./weights[1].shape[0])
+            torch.randn(weights[1].shape[0], weights[1].shape[1])
+            * math.sqrt(2.0 / weights[1].shape[0])
         )
         m.bias.data.fill_(0)
 
@@ -183,7 +190,7 @@ def visualize_batch(batch, plot_title: str = None, grid_dims: int = 4):
     batch = torchvision.utils.make_grid(batch).cpu().numpy()
     batch = np.transpose(batch, (1, 2, 0))
     plt.figure(figsize=(grid_dims, grid_dims))
-    plt.imshow(batch, cmap='Greys_r')
+    plt.imshow(batch, cmap="Greys_r")
     if plot_title is not None:
         title = plot_title
     else:
@@ -195,7 +202,7 @@ def visualize_batch(batch, plot_title: str = None, grid_dims: int = 4):
 def show(img, plot_title: str = None):
     batch = img.numpy()
     batch = np.transpose(batch, (1, 2, 0))
-    plt.imshow(batch, cmap='Greys_r')
+    plt.imshow(batch, cmap="Greys_r")
     if plot_title is not None:
         title = plot_title
     else:
@@ -204,7 +211,14 @@ def show(img, plot_title: str = None):
     plt.show()
 
 
-def encode_data(vae, data_iterator, dim_latent: int, dataset_name: str, save: bool = True, disp: bool = True):
+def encode_data(
+    vae,
+    data_iterator,
+    dim_latent: int,
+    dataset_name: str,
+    save: bool = True,
+    disp: bool = True,
+):
     """
     Parameters
     ----------
@@ -228,7 +242,7 @@ def encode_data(vae, data_iterator, dim_latent: int, dataset_name: str, save: bo
     """
     vae.eval()
 
-    #mnist
+    # mnist
     means = np.zeros((1, dim_latent))
     variances = np.zeros((1, dim_latent))
     batch_latents = []
@@ -263,12 +277,16 @@ def encode_data(vae, data_iterator, dim_latent: int, dataset_name: str, save: bo
                 canvas = torch.cat([orig_img, recons_img], 0)
                 canvas = canvas.cpu().data
                 # save_image(orig_img, f'{directory}orig_grid_sample_{b}.png')
-                canvas_grid = make_grid(canvas, nrow=BATCH_SIZE, range=(-1, 1), normalize=True)
-                save_image(canvas, f'{directory}recons_grid_sample_{b}.png')
+                canvas_grid = make_grid(
+                    canvas, nrow=BATCH_SIZE, range=(-1, 1), normalize=True
+                )
+                save_image(canvas, f"{directory}recons_grid_sample_{b}.png")
 
             if disp:
                 visualize_batch(batch, plot_title=f"Visualized {b}-Batch", grid_dims=4)
-                visualize_batch(recons_img, plot_title=f"Reconstructed {b}-Batch", grid_dims=8)
+                visualize_batch(
+                    recons_img, plot_title=f"Reconstructed {b}-Batch", grid_dims=8
+                )
                 # visualize_batch(canvas, plot_title=f"Reconstructed {b}-Batch", grid_dims=8)
 
             mean = mean.cpu().numpy()
@@ -286,10 +304,19 @@ def encode_data(vae, data_iterator, dim_latent: int, dataset_name: str, save: bo
     return means, variances, data_labels, batch_latents, z
 
 
-def reconstruct(vae, batch_latents: list, data_labels: list,
-                d: int, w: int, h: int,
-                dataset_name: str, save=False, disp=True,
-                n_samples: int = None, task: str = "test"):
+def reconstruct(
+    vae,
+    batch_latents: list,
+    data_labels: list,
+    d: int,
+    w: int,
+    h: int,
+    dataset_name: str,
+    save=False,
+    disp=True,
+    n_samples: int = None,
+    task: str = "test",
+):
     """
     Dims
     -------
@@ -308,14 +335,11 @@ def reconstruct(vae, batch_latents: list, data_labels: list,
 
             # Batches can have diff sizes, specially at the end.
             starts = [r for r in range(0, len(batch[0]) - d, d)]
-            ends = [
-                r + d
-                for r in range(0, len(batch[0]) - d, d)
-            ]
+            ends = [r + d for r in range(0, len(batch[0]) - d, d)]
 
             for j, (start, end) in enumerate(zip(starts, ends)):
-                mu = batch[0][start: end]
-                log_var = batch[1][start: end]
+                mu = batch[0][start:end]
+                log_var = batch[1][start:end]
                 label = data_labels[sample_counter]
                 log.debug(
                     f"Synthesizing the ({j}-th item from the {b}-th batch "
@@ -330,14 +354,16 @@ def reconstruct(vae, batch_latents: list, data_labels: list,
 
                 if save:
                     # directory=f"test/data/{dataset_name}/{CLASS_IDX}/{task}/{label}/"
-                    directory=f"test/data/{VAE_NAME}/{dataset_name}/{class_idx}/{class_idx}_reconstructed/"
+                    directory = f"test/data/{VAE_NAME}/{dataset_name}/{class_idx}/{class_idx}_reconstructed/"
                     confirm_directory(directory)
-                    recon_image_path = f'{directory}label_{label}_sample_{sample_counter}.png'
+                    recon_image_path = (
+                        f"{directory}label_{label}_sample_{sample_counter}.png"
+                    )
                     save_image(image.cpu(), recon_image_path)
                 if disp:
                     show(
                         image.cpu(),
-                        plot_title=f"{sample_counter}-th reconstructed datum. label: {label}"
+                        plot_title=f"{sample_counter}-th reconstructed datum. label: {label}",
                     )
 
                 if (n_samples is not None) and sample_counter > n_samples:
@@ -347,7 +373,15 @@ def reconstruct(vae, batch_latents: list, data_labels: list,
                 sample_counter += 1
 
 
-def generate_samples(vae, n_samples, n: int, d: int, directory: str, disp: bool = False, save: bool = False):
+def generate_samples(
+    vae,
+    n_samples,
+    n: int,
+    d: int,
+    directory: str,
+    disp: bool = False,
+    save: bool = False,
+):
     """
     # PENDING
     """
@@ -371,8 +405,8 @@ def generate_samples(vae, n_samples, n: int, d: int, directory: str, disp: bool 
         visualize_batch(samples.detach(), plot_title=plot_title, grid_dims=8)
 
     if save:
-        directory=f"test/data/{DATASET_NAME}/{class_idx}/{class_idx}_sampled_grids/"
-        save_path=f"{directory}grid_{n}.png"
+        directory = f"test/data/{DATASET_NAME}/{class_idx}/{class_idx}_sampled_grids/"
+        save_path = f"{directory}grid_{n}.png"
         save_image(samples, save_path)
 
 
@@ -417,7 +451,9 @@ def run_example(model_dir):
         val_hist.append(val_loss)
 
         if epoch % 10 == 0:
-            MODEL_PATH = f"{model_dir}{DATASET_NAME}_{DIM_LATENT}components_{epoch}epoch.pth"
+            MODEL_PATH = (
+                f"{model_dir}{DATASET_NAME}_{DIM_LATENT}components_{epoch}epoch.pth"
+            )
             torch.save(vae.state_dict(), MODEL_PATH)
     model_dir = "test/models/vae/"
     MODEL_PATH = f"{model_dir}{DATASET_NAME}_{class_idx}class_{DIM_LATENT}components_{epoch}epoch-FINAL.pth"
@@ -435,18 +471,15 @@ def run_example(model_dir):
     plt.xticks(np.arange(1, N_EPOCHS + 1, 1.0))
     plt.legend()
     plt.show()
-    log.info(f">>> Training, and Evaluation processes for: \
-    \n\t VAE using {DATASET_NAME}\n are complete")
+    log.info(
+        f">>> Training, and Evaluation processes for: \
+    \n\t VAE using {DATASET_NAME}\n are complete"
+    )
 
     # == Example use #1: USE THE MODEL TO COMPRESS and RECONSTRUCT IMAGES
     # random_data_synthesizer(vae, n_digits=3, dim_latent=dim_latent, selection=None)
     means, variances, data_labels, batch_latents, z = encode_data(
-        vae,
-        test_loader,
-        DIM_LATENT,
-        DATASET_NAME,
-        save=True,
-        disp=False
+        vae, test_loader, DIM_LATENT, DATASET_NAME, save=True, disp=False
     )
 
     n_test_samples = 10  # test with small sample of size n_digits
@@ -462,7 +495,7 @@ def run_example(model_dir):
         DATASET_NAME,
         save=True,
         disp=False,
-        n_samples=n_test_samples
+        n_samples=n_test_samples,
     )
 
     # means.shape = (len(dataset)* d, DIM_LATENT)
@@ -522,9 +555,13 @@ def fit_vae(train_loader, test_loader, class_idx):
     # optimizer = optim.Adamax(vae.parameters(), lr=lr)
     # optimizer = optim.RMSprop(vae.parameters(), lr=lr, centered=True)
     # optimizer = optim.SGD(vae.parameters(), lr=0.01, momentum=0.9)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, 10 if DATASET_NAME in ['imagenette', 'imagenet'] else 30, 0.5,)
+    scheduler = optim.lr_scheduler.StepLR(
+        optimizer, 10 if DATASET_NAME in ["imagenette", "imagenet"] else 30, 0.5,
+    )
 
-    samples_directory = f"test/data/{VAE_NAME}/{DATASET_NAME}/{DATA_SRC}_grids/{class_idx}/"
+    samples_directory = (
+        f"test/data/{VAE_NAME}/{DATASET_NAME}/{DATA_SRC}_grids/{class_idx}/"
+    )
     confirm_directory(samples_directory)
 
     train_hist = []
@@ -544,20 +581,26 @@ def fit_vae(train_loader, test_loader, class_idx):
             tensor_image = samples.view(-1, d, h, w).cpu().data
 
             # save_image(orig_img, f'{directory}orig_grid_sample_{b}.png')
-            grid = make_grid(tensor_image, nrow=int(n_samples**(.5)), range=(0, 1), normalize=True)
+            grid = make_grid(
+                tensor_image, nrow=int(n_samples ** (0.5)), range=(0, 1), normalize=True
+            )
 
             plot_title = f"Random-sampled batch {DATASET_NAME} and {epoch} epoch"
-            visualize_batch(grid.detach(), plot_title=plot_title, grid_dims=int(n_samples**(.5)))
+            visualize_batch(
+                grid.detach(), plot_title=plot_title, grid_dims=int(n_samples ** (0.5))
+            )
             save_path = f"{samples_directory}grid_{epoch}.png"
             save_image(grid, save_path)
         # if epoch == 27:
-            # import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         if epoch == 1:
             best_vae = vae
             best_loss = val_loss
         else:
             if val_loss < best_loss:
-                print(f"\n\n ===> {epoch}-epoch. Updating best (with {val_loss:.3f}), which is less than previous ({best_loss:.3f}) best_loss")
+                print(
+                    f"\n\n ===> {epoch}-epoch. Updating best (with {val_loss:.3f}), which is less than previous ({best_loss:.3f}) best_loss"
+                )
                 best_vae = vae
                 best_epoch = epoch
                 best_loss = val_loss
@@ -566,7 +609,9 @@ def fit_vae(train_loader, test_loader, class_idx):
                     torch.save(best_vae.state_dict(), model_path)
         scheduler.step()
 
-    temp_model_path = f"{model_dir}temps/{DATASET_NAME}_{DIM_LATENT}components_{epoch}epoch_FINAL.pth"
+    temp_model_path = (
+        f"{model_dir}temps/{DATASET_NAME}_{DIM_LATENT}components_{epoch}epoch_FINAL.pth"
+    )
     if DATA_SRC == "train":
         torch.save(vae.state_dict(), temp_model_path)
 
@@ -575,7 +620,9 @@ def fit_vae(train_loader, test_loader, class_idx):
     plt.plot(range(1, N_EPOCHS + 1), val_hist, label="Validated", marker=".")
 
     # Add Figure information
-    plt.title(f"Loss as a function Epochs (best epoch={best_epoch}, loss={best_loss:.3f})")
+    plt.title(
+        f"Loss as a function Epochs (best epoch={best_epoch}, loss={best_loss:.3f})"
+    )
     plt.xlabel("Training Epochs")
     plt.ylabel("Loss")
     # plt.ylim((0, 1.))
@@ -584,15 +631,17 @@ def fit_vae(train_loader, test_loader, class_idx):
     plot_name = f"{model_dir}{DATASET_NAME}_{CLASS_IDX}class_{DIM_LATENT}components.png"
     plt.savefig(plot_name)
     # plt.show()
-    log.info(f">>> Training, and Evaluation processes for: \
-    \n\t VAE using {DATASET_NAME}\n are complete")
+    log.info(
+        f">>> Training, and Evaluation processes for: \
+    \n\t VAE using {DATASET_NAME}\n are complete"
+    )
 
     return best_vae
 
 
 def load_existing_vae(class_idx):
 
-        # FITTING/TRAINNG
+    # FITTING/TRAINNG
     if VAE_NAME == "vae":
         vae = VAE(x_dim=x_dim, h_dim1=H_DIM1, h_dim2=H_DIM2, z_dim=DIM_LATENT)
     elif VAE_NAME == "cvae":
@@ -608,14 +657,12 @@ def load_existing_vae(class_idx):
     vae.load_state_dict(torch.load(chkp_path))
     return vae
 
-
-
     #%%
     # == Example use #1: USE THE MODEL TO COMPRESS and RECONSTRUCT IMAGES
     # random_data_synthesizer(vae, n_digits=3, dim_latent=dim_latent, selection=None)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     # save the torch model
     # for CLASS_IDX in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]:
     for CLASS_IDX in [0, 1]:
@@ -648,10 +695,20 @@ if __name__=="__main__":
         #%%
         pth_directory = f"{model_dir}temps/"
         confirm_directory(pth_directory)
-        pth_paths = sorted([os.path.join(pth_directory, file) for file in os.listdir(pth_directory) if file.endswith(".pth")])[:1]
+        pth_paths = sorted(
+            [
+                os.path.join(pth_directory, file)
+                for file in os.listdir(pth_directory)
+                if file.endswith(".pth")
+            ]
+        )[:1]
 
-        train_unique_labels, train_label_counts = torch.unique(torch.as_tensor(train_loader.dataset.targets), return_counts=True)
-        test_unique_labels, test_label_counts = torch.unique(torch.as_tensor(test_loader.dataset.targets), return_counts=True)
+        train_unique_labels, train_label_counts = torch.unique(
+            torch.as_tensor(train_loader.dataset.targets), return_counts=True
+        )
+        test_unique_labels, test_label_counts = torch.unique(
+            torch.as_tensor(test_loader.dataset.targets), return_counts=True
+        )
 
         if USE_PRETRAINED:
             vae = load_existing_vae(class_idx)
@@ -696,5 +753,3 @@ if __name__=="__main__":
 
             # save_path = f"{directory}grid_{i}.png"
             # save_image(tensor_image.cpu(), save_path)
-
-

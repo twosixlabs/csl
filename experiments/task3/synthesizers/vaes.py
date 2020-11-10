@@ -19,6 +19,7 @@ class AbstractAutoEncoder(nn.Module):
     """ Prototype.
         https://github.com/nadavbh12/VQ-VAE/blob/master/vq_vae/auto_encoder.py
     """
+
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
@@ -57,7 +58,9 @@ class VAE(nn.Module):
         https://github.com/topics/mnist-generation
     """
 
-    def __init__(self, x_dim: int, h_dim1: int = 512, h_dim2: int = 256, z_dim: int = 2):
+    def __init__(
+        self, x_dim: int, h_dim1: int = 512, h_dim2: int = 256, z_dim: int = 2
+    ):
         super(VAE, self).__init__()
         self.x_dim = x_dim
         self.z_dim = z_dim
@@ -112,13 +115,15 @@ class VAE(nn.Module):
             KL divergence (kld).
         """
         # import pdb; pdb.set_trace()
-        bce = F.binary_cross_entropy(recon_x, x.view(-1, recon_x.shape[1]), reduction="sum")
+        bce = F.binary_cross_entropy(
+            recon_x, x.view(-1, recon_x.shape[1]), reduction="sum"
+        )
         # bce = F.binary_cross_entropy_with_logits(recon_x, x.view(-1, recon_x.shape[1]), reduction="sum")
         kld = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
         return bce + eta * kld
 
     def latest_losses(self):
-        return {'bce': self.bce, 'kl': self.kld}
+        return {"bce": self.bce, "kl": self.kld}
 
 
 class ResBlock(nn.Module):
@@ -132,7 +137,8 @@ class ResBlock(nn.Module):
             nn.ReLU(),
             nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(mid_channels, out_channels, kernel_size=1, stride=1, padding=0)]
+            nn.Conv2d(mid_channels, out_channels, kernel_size=1, stride=1, padding=0),
+        ]
         if bn:
             layers.insert(2, nn.BatchNorm2d(out_channels))
         self.convs = nn.Sequential(*layers)
@@ -141,12 +147,11 @@ class ResBlock(nn.Module):
         return x + self.convs(x)
 
 
-
-
 class CVAE(nn.Module):
     """
     https://github.com/coolvision/vae_conv/blob/master/mvae_conv_model.py
     """
+
     def __init__(self, x_dim: int, nz: int, nc: int, ngf: int = 64, ndf: int = 64):
         super(CVAE, self).__init__()
 
@@ -214,7 +219,7 @@ class CVAE(nn.Module):
     def encode(self, x):
         # batch_size, d, h, w = x.shape
         # self.hw = h * w  # = 1024
-        conv = self.encoder(x);
+        conv = self.encoder(x)
         # print("encode conv", conv.size())
         # h1 = self.fc1(conv.view(-1, 1024))
         h1 = self.fc1(conv.view(-1, self.w * self.h))
@@ -417,9 +422,10 @@ class CVAE(nn.Module):
 #         return self.mse + eta * self.kl_loss
 
 
-
 class VQ_CVAE(nn.Module):
-    def __init__(self, d, k=10, bn=True, vq_coef=1, commit_coef=0.5, num_channels=3, **kwargs):
+    def __init__(
+        self, d, k=10, bn=True, vq_coef=1, commit_coef=0.5, num_channels=3, **kwargs
+    ):
         super(VQ_CVAE, self).__init__()
 
         self.encoder = nn.Sequential(
@@ -477,7 +483,7 @@ class VQ_CVAE(nn.Module):
 
     def sample(self, size, seed: int = None):
 
-        sample = torch.randn(size, self.d, self.f, self.f, requires_grad=False),
+        sample = (torch.randn(size, self.d, self.f, self.f, requires_grad=False),)
         if self.cuda():
             sample = sample.cuda()
         emb, _ = self.emb(sample)
@@ -486,13 +492,15 @@ class VQ_CVAE(nn.Module):
     def loss_function(self, x, recon_x, z_e, emb, argmin):
         self.mse = F.mse_loss(recon_x, x)
 
-        self.vq_loss = torch.mean(torch.norm((emb - z_e.detach())**2, 2, 1))
-        self.commit_loss = torch.mean(torch.norm((emb.detach() - z_e)**2, 2, 1))
+        self.vq_loss = torch.mean(torch.norm((emb - z_e.detach()) ** 2, 2, 1))
+        self.commit_loss = torch.mean(torch.norm((emb.detach() - z_e) ** 2, 2, 1))
 
-        return self.mse + self.vq_coef*self.vq_loss + self.commit_coef*self.commit_loss
+        return (
+            self.mse + self.vq_coef * self.vq_loss + self.commit_coef * self.commit_loss
+        )
 
     def latest_losses(self):
-        return {'mse': self.mse, 'vq': self.vq_loss, 'commitment': self.commit_loss}
+        return {"mse": self.mse, "vq": self.vq_loss, "commitment": self.commit_loss}
 
     # def print_atom_hist(self, argmin):
 
