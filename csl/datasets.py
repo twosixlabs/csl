@@ -34,13 +34,8 @@ train_loader, test_loader = dset.get_hybrid_dataloaders(
     num_workers=4,
 )
 """
-# import os
 import logging
 import coloredlogs
-# import numpy as np
-# import pickle
-
-# import matplotlib.pyplot as plt
 import torch
 import torchvision
 from torchvision import transforms
@@ -108,12 +103,13 @@ def load(name: str, input_size: int) -> torchvision.datasets:
 
 
 def get_hybrid_dataloaders(
-        name: str, method: str = "mnist",
-        batch_size: int = 16,
-        original_portion: float = 0.5,
-        synthetic_portion: float = 0.5,
-        num_workers: int = 2
-    ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
+    name: str,
+    method: str = "mnist",
+    batch_size: int = 16,
+    original_portion: float = 0.5,
+    synthetic_portion: float = 0.5,
+    num_workers: int = 2,
+) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
     """Helper method for datasets.load
     run:
         train_ds, test_ds = load('mnist')
@@ -132,12 +128,12 @@ def get_hybrid_dataloaders(
 
 
 def get_dataloaders(
-        name: str,
-        batch_size: int = 16,
-        num_workers: int = 2,
-        class_idx: int = "all",
-        num_samples: int = "all",
-    ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
+    name: str,
+    batch_size: int = 16,
+    num_workers: int = 2,
+    class_idx: int = "all",
+    num_samples: int = "all",
+) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
     """Helper method for datasets.load
     run:
         train_ds, test_ds = load('mnist')
@@ -192,45 +188,50 @@ class Dataset(object):
 
         # single channel vs. rgb (3-channel) images
         normalize_strategy = (
-            transforms.Normalize((0.5), (0.5)) if "mnist" in dataset_name
+            transforms.Normalize((0.5), (0.5))
+            if "mnist" in dataset_name
             else transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         )
 
         # DFAULT DATA TRANSFORMATIONS:
         if train_transforms is None:
-            train_transforms = transforms.Compose([
-                transforms.Resize(self.input_size),
-                transforms.CenterCrop(self.input_size),
-                # transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                normalize_strategy,  # rgb vs. bw
-            ])
+            train_transforms = transforms.Compose(
+                [
+                    transforms.Resize(self.input_size),
+                    transforms.CenterCrop(self.input_size),
+                    # transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    normalize_strategy,  # rgb vs. bw
+                ]
+            )
         if test_transforms is None:
-            test_transforms = transforms.Compose([
-                transforms.Resize(self.input_size),
-                transforms.CenterCrop(self.input_size),
-                transforms.ToTensor(),
-                normalize_strategy,  # rgb vs. bw
-            ])
+            test_transforms = transforms.Compose(
+                [
+                    transforms.Resize(self.input_size),
+                    transforms.CenterCrop(self.input_size),
+                    transforms.ToTensor(),
+                    normalize_strategy,  # rgb vs. bw
+                ]
+            )
 
         # Check for the special "ImageFolder" structure
-        if (image_folder_structure or "imagenet" in dataset_name or
-            "vae" in dataset_name or "gan" in dataset_name):
+        if (
+            image_folder_structure
+            or "imagenet" in dataset_name
+            or "vae" in dataset_name
+            or "gan" in dataset_name
+        ):
             log.info(f"Processing '{dataset_name}' ImageFolder structure")
 
             train_dataset = ImageFolder(
-                root=f"{DATA_DIR}/{dataset_name}/train/",
-                transform=train_transforms,
+                root=f"{DATA_DIR}/{dataset_name}/train/", transform=train_transforms,
             )
             test_dataset = ImageFolder(
-                root=f"{DATA_DIR}/{dataset_name}/val/",
-                transform=test_transforms,
+                root=f"{DATA_DIR}/{dataset_name}/val/", transform=test_transforms,
             )
 
         else:
-            log.info(
-                f"Processing '{dataset_name}' torch.vision built-in structure"
-            )
+            log.info(f"Processing '{dataset_name}' torch.vision built-in structure")
             train_dataset = dataset(
                 root=f"{DATA_DIR}/{dataset_name}_data/",
                 download=True,
@@ -247,17 +248,17 @@ class Dataset(object):
 
     @classmethod
     def create_dataloaders(
-            self,
-            dataset_name: str,
-            batch_size: int,
-            num_workers: int = 0,
-            class_idx: int = None,
-            num_samples: int = None,
-            train_transforms: torchvision.transforms = None,
-            test_transforms: torchvision.transforms = None,
-            train_dataset: torchvision.datasets = None,
-            test_dataset: torchvision.datasets = None,
-        ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
+        self,
+        dataset_name: str,
+        batch_size: int,
+        num_workers: int = 0,
+        class_idx: int = None,
+        num_samples: int = None,
+        train_transforms: torchvision.transforms = None,
+        test_transforms: torchvision.transforms = None,
+        train_dataset: torchvision.datasets = None,
+        test_dataset: torchvision.datasets = None,
+    ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
         """Convenience method for a customized and subsampled dataloading.
         Dataloaders for the complete datasets or for a specific class index.
         E.g., To get all 0-digit samples from mnist dataset  use
@@ -283,10 +284,12 @@ class Dataset(object):
             )
 
         if class_idx is not None:
-            aux1 = "all" if ((num_samples is None) or (num_samples == "all")) else num_samples
-            log.info(
-                f" > Extracting {aux1} (max) samples for {class_idx} class."
+            aux1 = (
+                "all"
+                if ((num_samples is None) or (num_samples == "all"))
+                else num_samples
             )
+            log.info(f" > Extracting {aux1} (max) samples for {class_idx} class.")
             train_sampler = self._build_sampler(train_dataset, class_idx)
             test_sampler = self._build_sampler(test_dataset, class_idx)
 
@@ -313,17 +316,16 @@ class Dataset(object):
 
     @classmethod
     def create_hybrid_dataloaders(
-            self,
-            dataset_name: str,
-            synthetic_dataset_name: str,
-            batch_size: int,
-            original_portion: float,
-            synthetic_portion: float,
-            seed: int = None,
-            num_workers: int = 2,
-            input_size: int = None,
-
-        ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
+        self,
+        dataset_name: str,
+        synthetic_dataset_name: str,
+        batch_size: int,
+        original_portion: float,
+        synthetic_portion: float,
+        seed: int = None,
+        num_workers: int = 2,
+        input_size: int = None,
+    ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
         """Convenience method. Combines datasets (original and synthetic).
         mixes the datasets (i.e., hybrid) and returns a hybrid
         training_dataloader and an original test_dataloader.
@@ -339,18 +341,22 @@ class Dataset(object):
             n_channels = 3
 
         if n_channels == 1:
-            data_transforms = transforms.Compose([
+            data_transforms = transforms.Compose(
+                [
                     transforms.Grayscale(num_output_channels=1),
                     transforms.Resize(input_size),
                     transforms.CenterCrop(input_size),
                     transforms.ToTensor(),
-            ])
+                ]
+            )
         elif n_channels == 3:
-            data_transforms = transforms.Compose([
+            data_transforms = transforms.Compose(
+                [
                     transforms.Resize(input_size),
                     transforms.CenterCrop(input_size),
                     transforms.ToTensor(),
-            ])
+                ]
+            )
         else:
             raise NotImplementedError(
                 f"The provided n_channels ({n_channels}) is not supported."
@@ -360,8 +366,7 @@ class Dataset(object):
         # ORIGINAL DATASET
         # step 1. get the original train dataset and keep 'split' portion of it.
         train_original, test_dataset = self.load(
-            self.dataset_name,
-            input_size=input_size,
+            self.dataset_name, input_size=input_size,
         )
         log.info(
             f"Loaded complete original '{self.dataset_name}' dataset with "
@@ -378,9 +383,7 @@ class Dataset(object):
 
         elif (original_portion > 0.0) and (original_portion < 1):
             train_original, _ = self._split_dataset(
-                train_original,
-                split=original_portion,
-                seed=seed
+                train_original, split=original_portion, seed=seed
             )
             log.info(
                 f" > Splitted original '{self.dataset_name}' dataset with "
@@ -400,7 +403,7 @@ class Dataset(object):
             train_len += len(train_original)
 
         # SYNTHETIC DATASET
-        if (synthetic_portion > 0.0):
+        if synthetic_portion > 0.0:
             train_synthetic, test_synthetic = load(
                 synthetic_dataset_name,
                 input_size=input_size,
@@ -422,9 +425,7 @@ class Dataset(object):
         elif (synthetic_portion > 0.0) and (synthetic_portion < 1.0):
             # step 2. get the synthetic train dataset and dump some of it
             train_synthetic, _ = self._split_dataset(
-                train_synthetic,
-                split=synthetic_portion,
-                seed=seed
+                train_synthetic, split=synthetic_portion, seed=seed
             )
 
             log.info(
@@ -480,7 +481,6 @@ class Dataset(object):
 
         return train_loader, test_loader
 
-
     def _build_sampler(dataset, class_idx, num_samples: int = None):
         """Helper. Enables dataloader with a given by class_idx
         uses the buit-in weighted random sampler, and returns a sampler object
@@ -507,7 +507,9 @@ class Dataset(object):
                 label_weight if val == label else 0 for val in dataset.targets
             ]
         elif hasattr(dataset, "labels"):
-            sample_weights = [label_weight if val == label else 0 for val in dataset.labels]
+            sample_weights = [
+                label_weight if val == label else 0 for val in dataset.labels
+            ]
 
         # NOTE: num_samples <= label_counts[class_idx] -- MUST
         num_samples = label_counts[class_idx] if (num_samples is None) else num_samples
@@ -516,12 +518,9 @@ class Dataset(object):
         )
         return sampler
 
-
     def _split_dataset(
-            dataset: torchvision.datasets,
-            split: float = 0.5,
-            seed: int = None
-        ):
+        dataset: torchvision.datasets, split: float = 0.5, seed: int = None
+    ):
         """Helper. Split dataset
         """
         idxs_1, idxs_2 = train_test_split(
@@ -531,6 +530,7 @@ class Dataset(object):
         dataset_part_2 = Subset(dataset, idxs_2)
         return dataset_part_1, dataset_part_2
 
+
 def simple_test(name: str):
     train_data, test_data = Dataset.load(name)
     log.info(
@@ -538,7 +538,7 @@ def simple_test(name: str):
         f"'label-symbol: index' map: \n\n{train_data.class_to_idx}."
     )
 
-if __name__ == "__main__":
-    name = 'mnist'
-    simple_test(name)
 
+if __name__ == "__main__":
+    name = "mnist"
+    simple_test(name)
