@@ -208,7 +208,7 @@ def synthesize_using_pretrained(
             label_info = get_label_counts(args.dataset_name, args.class_index)
             num_samples = label_info[f"{task}_labels"][1]
         data_save_dir = f"{save_dir}{dataset_name}_{method}/{task}/{class_idx}"
-        confirm_directory(images_path)
+        confirm_directory(data_save_dir)
         model.generate_images(num_samples, data_save_dir)
 
 
@@ -301,11 +301,11 @@ def prep_args(args, approach) -> dict:
     }
     # train before generating images
     if approach == "train_model":
-        if task == "mimic":
+        if args.task == "mimic":
             tasks = ["train", "val"]
-        elif task == "train":
+        elif args.task == "train":
             tasks = ["train"]
-        elif task == "val":
+        elif args.task == "val":
             raise NotImplementedError(
                 "Cannot create a validation dataset without an existing model."
             )
@@ -336,7 +336,7 @@ def prep_args(args, approach) -> dict:
         )
 
     if args.image_dim is None:
-        kwargs["image_dim"] = IMAGE_DIMS[dataset_name]
+        kwargs["image_dim"] = IMAGE_DIMS[args.dataset_name]
         kwargs["tasks"] = tasks
 
     return kwargs
