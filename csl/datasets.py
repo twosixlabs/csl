@@ -1,20 +1,20 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-Method to load synthetic versions of datasets
-Prototype:
+Module to load and manipulate original and synthetic versions of datasets.
+
+Usage:
 
 import csl.datasets as dset
-
 # example 1. load the complete mnist dataset
-a. original mnist:
+# a. original mnist:
 train_loader, test_loader = dset.load("mnist")
 
-b. synthetic mnist -- generated using dcgan:
+# b. synthetic mnist -- generated using dcgan:
 train_loader, test_loader = dset.load("mnist_dcgan")
 
 # example 2. train and test dataloaders containing all samples class_index=0
-from cifar10:
+# from cifar10:
 train_loader, test_loader = dset.get_dataloaders(
     "cifar10",
     batch_size=16,
@@ -24,7 +24,7 @@ train_loader, test_loader = dset.get_dataloaders(
 )
 
 # example 3. train and test dataloaders containing samples with 50% original
-cifar10 and 50% synthetic samples generated using vae:
+# cifar10 and 50% synthetic samples generated using vae:
 train_loader, test_loader = dset.get_hybrid_dataloaders(
     "cifar10",
     "cifar10_vae"
