@@ -128,6 +128,7 @@ class VAE_ARCHITECTURE(nn.Module):
         Return a vae generated tensor represenative of synthetic images. The tensor
         requires reshaping.
         """
+        # import pdb; pdb.set_trace()
         if seed is not None:
             torch.manual_seed(seed)
         sample = torch.randn(n_samples * n_channels, self.z_dim)
@@ -321,6 +322,7 @@ class VAE(object):
         # self._set_vae()
 
     def _train_one_epoch(self, epoch, train_loader):
+
         # set to train mode (enable grad)
         self.model.train()
         train_loss = 0
@@ -330,7 +332,7 @@ class VAE(object):
             tqdm(range(ttotal), desc=f"Train Batch {epoch}"), train_loader,
         ):
             # for batch_idx, (data, _) in enumerate(train_loader):
-            data = data.cuda()
+            data = data.to(DEVICE)
             self.optimizer.zero_grad()
 
             recon_batch, mu, log_var = self.model(data)
@@ -362,20 +364,9 @@ class VAE(object):
         return epoch_loss
 
     def test(self, test_loader):
-        """
-        Parameters
-        ----------
-        vae : pth.model
-            the in-training variational auto-encoder.
-        epoch : int
-            epoch index number.
+        """Convenience.
         test_loader : pth.dataloder
             iterable containing (data, labels).
-
-        Returns
-        -------
-        None.
-
         """
         self.model.eval()
         test_loss = 0
@@ -406,7 +397,6 @@ class VAE(object):
         # Learning rate for optimizers
         self.lr = 2e-4
         self.criterion = nn.BCELoss()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, amsgrad=True)
 
         batch, labels = iter(train_loader).next()
 
@@ -415,10 +405,12 @@ class VAE(object):
         self.w = batch.shape[2]
         self.h = batch.shape[3]
         self.x_dim = self.w * self.h
-        self.z_dim = self.x_dim * self.fidelity
+        self.z_dim = int(self.x_dim * self.fidelity)
 
         # setup the model
         self._set_model()
+
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr, amsgrad=True)
 
         # weight initialization
         self.model.apply(init_kaiming)  # init_xavier,
@@ -426,9 +418,11 @@ class VAE(object):
 
         self.train_hist = []
         self.test_hist = []
+        self.val_hist = []
 
         for epoch in range(1, self.num_epochs + 1):
-            self.train_loss = self._train_one_epoch(self, epoch, train_loader)
+
+            self.train_loss = self._train_one_epoch(epoch, train_loader)
             self.val_loss = self.test(test_loader)
             self.train_hist.append(self.train_loss)
             self.val_hist.append(self.val_loss)

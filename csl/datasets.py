@@ -34,6 +34,7 @@ train_loader, test_loader = dset.get_hybrid_dataloaders(
     num_workers=4,
 )
 """
+import os
 import logging
 import coloredlogs
 import torch
@@ -47,6 +48,8 @@ from torchvision.datasets import (
     STL10,
     ImageFolder,
 )
+
+import pdb
 from torch.utils.data import Subset, ConcatDataset
 from sklearn.model_selection import train_test_split
 
@@ -91,62 +94,77 @@ IMAGE_DIMS = {
     "fashion-mnist": 28,
     "cifar10": 28,
     # "stl10": 32,  # TODO
+    "fashion-mnist_vae": 28,
 }
 
 
-def load(name: str, input_size: int) -> torchvision.datasets:
+def load(
+    dataset_name: str, image_size: int = None, data_directory: os.PathLike = None
+) -> torchvision.datasets:
     """Helper method for datasets.load
     run:
         train_ds, test_ds = load('mnist')
     """
-    return Dataset.load(name)
+    if image_size is None:
+        # revert to dataset size
+        image_size = IMAGE_DIMS[dataset_name]
+    return Dataset.load(dataset_name, image_size, data_directory)
 
 
-def get_hybrid_dataloaders(
-    name: str,
-    method: str = "mnist",
+def get_dataloaders(
+    dataset_name: str,
+    image_size: int = None,
     batch_size: int = 16,
-    original_portion: float = 0.5,
-    synthetic_portion: float = 0.5,
     num_workers: int = 2,
+    class_idx: int = "all",
+    num_samples: int = "all",
+    train_transforms: torchvision.transforms = None,
+    test_transforms: torchvision.transforms = None,
+    data_directory: os.PathLike = None,
 ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
     """Helper method for datasets.load
     run:
         train_ds, test_ds = load('mnist')
     """
-    synthetic_name = f"{name}_{method}"
     kwargs = {
-        "datset_name": name,
+        "dataset_name": dataset_name,
+        "input_size": image_size,
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "class_idx": class_idx,
+        "num_samples": num_samples,
+        "data_directory": data_directory,
+    }
+    return Dataset.create_dataloaders(**kwargs)
+
+
+def get_hybrid_dataloaders(
+    dataset_name: str,
+    image_size: int = None,
+    method: str = "vae",
+    batch_size: int = 16,
+    original_portion: float = 0.5,
+    synthetic_portion: float = 0.5,
+    num_workers: int = 2,
+    data_directory: os.PathLike = None,
+) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
+    """Helper method for datasets.load
+    run:
+        train_ds, test_ds = load('mnist')
+    """
+    synthetic_name = f"{dataset_name}_{method}"
+    kwargs = {
+        "dataset_name": dataset_name,
+        "input_size": image_size,
         "synthetic_dataset_name": synthetic_name,
         "batch_size": batch_size,
         "original_portion": original_portion,
         "synthetic_portion": synthetic_portion,
         "num_workers": num_workers,
+        "data_directory": data_directory,
     }
 
     return Dataset.create_hybrid_dataloaders(**kwargs)
-
-
-def get_dataloaders(
-    name: str,
-    batch_size: int = 16,
-    num_workers: int = 2,
-    class_idx: int = "all",
-    num_samples: int = "all",
-) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
-    """Helper method for datasets.load
-    run:
-        train_ds, test_ds = load('mnist')
-    """
-    kwargs = {
-        "datset_name": name,
-        "batch_size": batch_size,
-        "num_workers": num_workers,
-        "class_idx": class_idx,
-        "num_samples": num_samples,
-    }
-
-    return Dataset.create_dataloaders(**kwargs)
 
 
 class Dataset(object):
@@ -166,12 +184,14 @@ class Dataset(object):
         train_transforms: torchvision.transforms = None,
         test_transforms: torchvision.transforms = None,
         image_folder_structure: bool = False,
+        data_directory: os.PathLike = None,
     ) -> (torchvision.datasets, torchvision.datasets):
         """Conveninence method for loading datasets by name.
         Optional args: trainsformations for train and test
         """
         # import pdb; pdb.set_trace()
         self.dataset_name = dataset_name
+
         # check dataset structure (slightly different methods)
         if self.dataset_name not in DATASETS:
             raise NotImplementedError(
@@ -185,6 +205,9 @@ class Dataset(object):
             self.input_size = IMAGE_DIMS[dataset_name]
         else:
             self.input_size = input_size
+
+        if data_directory is None:
+            data_directory = DATA_DIR
 
         # single channel vs. rgb (3-channel) images
         normalize_strategy = (
@@ -224,22 +247,23 @@ class Dataset(object):
             log.info(f"Processing '{dataset_name}' ImageFolder structure")
 
             train_dataset = ImageFolder(
-                root=f"{DATA_DIR}/{dataset_name}/train/", transform=train_transforms,
+                root=f"{data_directory}/{dataset_name}/train/",
+                transform=train_transforms,
             )
             test_dataset = ImageFolder(
-                root=f"{DATA_DIR}/{dataset_name}/val/", transform=test_transforms,
+                root=f"{data_directory}/{dataset_name}/val/", transform=test_transforms,
             )
 
         else:
             log.info(f"Processing '{dataset_name}' torch.vision built-in structure")
             train_dataset = dataset(
-                root=f"{DATA_DIR}/{dataset_name}_data/",
+                root=f"{data_directory}/{dataset_name}/",
                 download=True,
                 train=True,
                 transform=train_transforms,
             )
             test_dataset = dataset(
-                root=f"{DATA_DIR}/{dataset_name}_data/",
+                root=f"{data_directory}/{dataset_name}/",
                 download=True,
                 train=False,
                 transform=test_transforms,
@@ -250,6 +274,7 @@ class Dataset(object):
     def create_dataloaders(
         self,
         dataset_name: str,
+        input_size: int,
         batch_size: int,
         num_workers: int = 0,
         class_idx: int = None,
@@ -258,6 +283,7 @@ class Dataset(object):
         test_transforms: torchvision.transforms = None,
         train_dataset: torchvision.datasets = None,
         test_dataset: torchvision.datasets = None,
+        data_directory: os.PathLike = None,
     ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
         """Convenience method for a customized and subsampled dataloading.
         Dataloaders for the complete datasets or for a specific class index.
@@ -270,28 +296,39 @@ class Dataset(object):
         A list of Pytorch supported datasets:
             https://pytorch.org/docs/stable/torchvision/datasets.html
         """
-        train_sampler, test_sampler = None, None
+        # pdb.set_trace()
 
+        # which dataset
         self.dataset_name = dataset_name
+        # dataset image dimensions
+        if input_size is None:
+            self.input_size = IMAGE_DIMS[dataset_name]
+        else:
+            self.input_size = input_size
 
+        # Datasets: train and test
         if (train_dataset is None) and (test_dataset is None):
-            # Fetch the datasets: train and test
             train_dataset, test_dataset = self.load(
                 self.dataset_name,
                 self.input_size,
                 train_transforms=train_transforms,
                 test_transforms=test_transforms,
+                data_directory=data_directory,
             )
 
-        if class_idx is not None:
-            aux1 = (
-                "all"
-                if ((num_samples is None) or (num_samples == "all"))
-                else num_samples
+        # how many samples
+        if (num_samples is None) or (num_samples == "all"):
+            num_samples = "all"
+
+        # which classes
+        if (class_idx is None) or (class_idx == "all"):
+            train_sampler, test_sampler = None, None
+        else:
+            log.info(
+                f" > Extracting {num_samples} (max) samples for {class_idx} class(es)."
             )
-            log.info(f" > Extracting {aux1} (max) samples for {class_idx} class.")
-            train_sampler = self._build_sampler(train_dataset, class_idx)
-            test_sampler = self._build_sampler(test_dataset, class_idx)
+            train_sampler = self._build_sampler(train_dataset, class_idx, num_samples)
+            test_sampler = self._build_sampler(test_dataset, class_idx, num_samples)
 
         shuffle_train_loader = True if train_sampler is None else None
 
@@ -325,6 +362,7 @@ class Dataset(object):
         seed: int = None,
         num_workers: int = 2,
         input_size: int = None,
+        data_directory: os.PathLike = None,
     ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
         """Convenience method. Combines datasets (original and synthetic).
         mixes the datasets (i.e., hybrid) and returns a hybrid
@@ -333,7 +371,11 @@ class Dataset(object):
         self.dataset_name = dataset_name
         self.synthetic_dataset_name = synthetic_dataset_name
 
-        # input_size = IMAGE_DIMS[DATASET_NAME]
+        # dataset image dimensions
+        if input_size is None:
+            self.input_size = IMAGE_DIMS[dataset_name]
+        else:
+            self.input_size = input_size
 
         if "mnist" in dataset_name:  # grayscale
             n_channels = 1
@@ -344,16 +386,16 @@ class Dataset(object):
             data_transforms = transforms.Compose(
                 [
                     transforms.Grayscale(num_output_channels=1),
-                    transforms.Resize(input_size),
-                    transforms.CenterCrop(input_size),
+                    transforms.Resize(self.input_size),
+                    transforms.CenterCrop(self.input_size),
                     transforms.ToTensor(),
                 ]
             )
         elif n_channels == 3:
             data_transforms = transforms.Compose(
                 [
-                    transforms.Resize(input_size),
-                    transforms.CenterCrop(input_size),
+                    transforms.Resize(self.input_size),
+                    transforms.CenterCrop(self.input_size),
                     transforms.ToTensor(),
                 ]
             )
@@ -366,7 +408,11 @@ class Dataset(object):
         # ORIGINAL DATASET
         # step 1. get the original train dataset and keep 'split' portion of it.
         train_original, test_dataset = self.load(
-            self.dataset_name, input_size=input_size,
+            self.dataset_name,
+            input_size=self.input_size,
+            train_transforms=data_transforms,
+            test_transforms=data_transforms,
+            data_directory=data_directory,
         )
         log.info(
             f"Loaded complete original '{self.dataset_name}' dataset with "
@@ -383,7 +429,7 @@ class Dataset(object):
 
         elif (original_portion > 0.0) and (original_portion < 1):
             train_original, _ = self._split_dataset(
-                train_original, split=original_portion, seed=seed
+                train_original, split=original_portion, seed=seed,
             )
             log.info(
                 f" > Splitted original '{self.dataset_name}' dataset with "
@@ -404,11 +450,12 @@ class Dataset(object):
 
         # SYNTHETIC DATASET
         if synthetic_portion > 0.0:
-            train_synthetic, test_synthetic = load(
+            train_synthetic, test_synthetic = self.load(
                 synthetic_dataset_name,
-                input_size=input_size,
+                input_size=self.input_size,
                 train_transforms=data_transforms,
                 test_transforms=data_transforms,
+                data_directory=data_directory,
             )
             log.info(
                 f" Loaded complete synthetic '{synthetic_dataset_name}' "
@@ -425,7 +472,7 @@ class Dataset(object):
         elif (synthetic_portion > 0.0) and (synthetic_portion < 1.0):
             # step 2. get the synthetic train dataset and dump some of it
             train_synthetic, _ = self._split_dataset(
-                train_synthetic, split=synthetic_portion, seed=seed
+                train_synthetic, split=synthetic_portion, seed=seed,
             )
 
             log.info(
@@ -468,7 +515,7 @@ class Dataset(object):
 
         # setp 4. Create the dataloader
         train_loader, test_loader = self.create_dataloaders(
-            # dataset_name=dataset_name,
+            dataset_name=dataset_name,
             batch_size=batch_size,
             input_size=input_size,
             num_workers=num_workers,
@@ -481,7 +528,7 @@ class Dataset(object):
 
         return train_loader, test_loader
 
-    def _build_sampler(dataset, class_idx, num_samples: int = None):
+    def _build_sampler(dataset, class_idx, num_samples: int = "all"):
         """Helper. Enables dataloader with a given by class_idx
         uses the buit-in weighted random sampler, and returns a sampler object
         with num_samples.
@@ -492,6 +539,7 @@ class Dataset(object):
         output:
             sampler: torch weighted random sampler object.
         """
+        # pdb.set_trace()
         # unique labels and their frequency counts
         unique_labels, label_counts = torch.unique(
             torch.as_tensor(dataset.targets), return_counts=True
@@ -512,7 +560,7 @@ class Dataset(object):
             ]
 
         # NOTE: num_samples <= label_counts[class_idx] -- MUST
-        num_samples = label_counts[class_idx] if (num_samples is None) else num_samples
+        num_samples = label_counts[class_idx] if num_samples == "all" else num_samples
         sampler = WeightedRandomSampler(
             weights=sample_weights, num_samples=int(num_samples), replacement=True,
         )

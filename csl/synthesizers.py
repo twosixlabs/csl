@@ -33,9 +33,9 @@ DATA_DIR = "~/Documents/twosix/datasets"
 
 # supported generative methods
 METHODS = {
-    "vae": vaes.VAE,
-    "cvae": vaes.CVAE,
-    "dcgan": gans.DCGAN,
+    "vae": vaes.VAE(),
+    "cvae": vaes.CVAE(),
+    "dcgan": gans.DCGAN(),
 }
 
 # datasets
@@ -53,28 +53,30 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Run CLS image Synthesizer")
     parser.add_argument(
         "--method",
+        default="vae",
         help=(
             "Name of the method used to generate synthetic images "
             "(options: vae, cvae, dcgan) --required"
         ),
         type=str,
-        required=True,
+        required=False,  # True,
     )
     parser.add_argument(
         "--dataset_name",
+        default="mnist",
         help=(
             "str, name of the original dataset used to train the "
             "synthesizer (options: mnist, fashion-mnist, cifar10, "
             "imagenet, imagenette) --required"
         ),
         type=str,
-        required=True,
+        required=False,  # True
     )
     parser.add_argument(
         "--class_index",
         help="int, class index of the class to be simulated (default='all')",
         # type=int,
-        default="all",
+        default=0,  # all
         required=False,
     )
 
@@ -135,8 +137,8 @@ def parse_args():
     )
     parser.add_argument(
         "--task",
-        help="str, name of the task (train, val, or mimic (tran and val))",
-        default="train",
+        help="str, name of the task (train, val, or mimic (tran + val))",
+        default="mimic",
         type=str,
         required=False,
     )
@@ -157,8 +159,8 @@ def parse_args():
 
 def get_label_counts(dataset_name, class_idx):
 
-    train_loader, test_loader = dsets.create_dataloaders(
-        dataset_name, batch_size=16, input_size=28, num_workers=1, class_idx=class_idx,
+    train_loader, test_loader = dsets.get_dataloaders(
+        dataset_name, batch_size=16, image_size=28, num_workers=1, class_idx=class_idx,
     )
     train_unique_labels, train_label_counts = torch.unique(
         torch.as_tensor(train_loader.dataset.targets), return_counts=True
@@ -185,14 +187,14 @@ def get_label_counts(dataset_name, class_idx):
 
 
 def synthesize_using_pretrained(
-    method: str,
-    dataset_name: str,
-    load_model_path: os.PathLike,
-    num_workers: int,
-    class_idx: int,
+    method: str = None,
+    dataset_name: str = None,
+    load_model_path: os.PathLike = None,
+    num_workers: int = 4,
+    class_idx: int = "all",
     tasks: list = ["train"],
     num_samples: int = "all",
-    save_dir: os.PathLike = "temp/datasets/",
+    data_save_dir: os.PathLike = "temp/datasets/",
 ):
     """
     loads a pretained model and synthesizes images that are saved to
@@ -207,18 +209,18 @@ def synthesize_using_pretrained(
         if (num_samples is not None) or (not num_samples == "all"):
             label_info = get_label_counts(args.dataset_name, args.class_index)
             num_samples = label_info[f"{task}_labels"][1]
-        data_save_dir = f"{save_dir}{dataset_name}_{method}/{task}/{class_idx}"
+        data_save_dir = f"{data_save_dir}{dataset_name}_{method}/{task}/{class_idx}/"
         confirm_directory(data_save_dir)
         model.generate_images(num_samples, data_save_dir)
 
 
 def train_and_synthesize(
-    method: str,
-    dataset_name: str,
-    batch_size: int,
-    num_workers: int,
-    class_idx: int,
-    num_epochs: int,
+    method: str = None,
+    dataset_name: str = None,
+    batch_size: int = 32,
+    num_workers: int = 4,
+    class_idx: int = "all",
+    num_epochs: int = 3,
     image_dim: int = None,
     tasks: list = ["train"],
     num_samples: int = "all",
@@ -257,38 +259,45 @@ def train_and_synthesize(
     if (num_samples is None) or (num_samples == "all"):
         num_samples = "all"
 
+    # import pdb
+
     # generate based on task
     for task in tasks:
-        if (class_idx is not None) or (not class_idx == "all"):
+        if (class_idx is None) or (class_idx == "all"):
             unique_labels = label_info[f"{task}_labels"][0]
         else:
             unique_labels = [args.class_index]
 
         for idx in unique_labels:  # all class indices
             # dataloaders for the specific class
-            train_loader, test_loader = dsets.create_dataloaders(
+            train_loader, test_loader = dsets.get_dataloaders(
                 args.dataset_name,
                 batch_size=batch_size,
-                input_size=image_dim,
+                image_size=image_dim,
                 num_workers=num_workers,
                 class_idx=idx,
                 train_transforms=train_transforms,
                 test_transforms=test_transforms,
             )
-        if task == "train":
-            model = METHODS[method]
-            model.train(train_loader, test_loader, num_epochs=num_epochs)
-            model_save_dir = (
-                f"{model_save_dir}{dataset_name}_{method}/{task}/{class_idx}"
+            if task == "train":
+                model = METHODS[method]
+                model.train(train_loader, test_loader, num_epochs=num_epochs)
+                model_save_dir = (
+                    f"{model_save_dir}{dataset_name}_{method}/{task}/{class_idx}/"
+                )
+                confirm_directory(model_save_dir)
+                model.save_model(model_path=model_save_dir)
+            # pdb.set_trace()
+            num_samples = (
+                label_info[f"{task}_labels"][1][class_idx]
+                if num_samples == "all"
+                else num_samples
             )
-            model.save_model(model_path=model_save_dir)
-
-        num_samples = (
-            label_info[f"{task}_labels"][1] if num_samples == "all" else num_samples
-        )
-        data_save_dir = f"{data_save_dir}{dataset_name}_{method}/{task}/{class_idx}"
-        confirm_directory(data_save_dir)
-        model.generate_images(num_samples, data_save_dir)
+            data_save_dir = (
+                f"{data_save_dir}{dataset_name}_{method}/{task}/{class_idx}/"
+            )
+            confirm_directory(data_save_dir)
+            model.generate_images(num_samples, data_save_dir)
 
 
 def prep_args(args, approach) -> dict:
@@ -298,6 +307,8 @@ def prep_args(args, approach) -> dict:
         "num_samples": args.num_samples,
         "dataset_name": args.dataset_name,
         "data_save_dir": args.data_save_dir,
+        "model_save_dir": args.model_save_dir,
+        "class_idx": args.class_index,
     }
     # train before generating images
     if approach == "train_model":
@@ -314,7 +325,6 @@ def prep_args(args, approach) -> dict:
             {
                 "batch_size": args.batch_size,
                 "num_workers": args.num_workers,
-                "class_idx": args.class_index,
                 "num_epochs": args.num_epochs,
             }
         )
@@ -351,6 +361,7 @@ def synthesize(args):
     If training and mimicking the method trains a new synthesizer for each
     class in the dataset.
     """
+    print(type(args))
     # verify the main args
     if args.method not in METHODS:
         raise NotImplementedError(
@@ -371,6 +382,8 @@ def synthesize(args):
     else:
         # cannot handle "val" task alone -- must throw an error.
         kwargs = prep_args(args, "load_model")
+        del kwargs["load_model_path"]
+        # import pdb; pdb.set_trace()
         train_and_synthesize(**kwargs)
 
 
