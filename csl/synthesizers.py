@@ -36,7 +36,7 @@ METHODS = {
     "vae": vaes.VAE(),
     "cvae": vaes.CVAE(),
     "dcgan": gans.DCGAN(),
-    "acgan": gans.ACGAN(),
+    # PENDING "acgan": gans.ACGAN(),
 }
 
 # datasets
