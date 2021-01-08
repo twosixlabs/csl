@@ -5,7 +5,6 @@ Generative Adversarial Net Sythesizers:
   DCGAN
 
 TODO: BIG-GAN
-PENDING: STYLE-GAN
 """
 import os
 import torch
@@ -23,7 +22,8 @@ log = logging.getLogger(__name__)
 coloredlogs.install(level="info", logger=log)
 
 # Set random seed for reproducibility
-MANUAL_SEED = 999
+# MANUAL_SEED = 999
+MANUAL_SEED = None
 # manualSeed = random.randint(1, 10000) # use if you want new results
 if MANUAL_SEED is not None:
     log.debug("Setting The Random Seed: ", MANUAL_SEED)
@@ -34,39 +34,39 @@ if MANUAL_SEED is not None:
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-# Generator code: DCGAN
-class Generator(nn.Module):
+class DCGenerator(nn.Module):
+    """DCGAN Generator"""
+
     def __init__(
         self,
-        ngpu: int,
+        # ngpu: int,
         nc: int,  # 3: color images; 1: grayscale
-        nz: int = 100,
-        ngf: int = 64,
-        ndf: int = 64,
+        nz: int,
+        ngf: int,
+        ndf: int,
         beta1: float = 0.5,
         bias: bool = False,
     ):
-        super(Generator, self).__init__()
-        self.ngpu = ngpu
+        super(DCGenerator, self).__init__()
         self.main = nn.Sequential(
             # input is Z, going into a convolution
-            nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False),
+            nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=bias),
             nn.BatchNorm2d(ngf * 8),
             nn.ReLU(True),
             # state size. (ngf*8) x 4 x 4
-            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=bias),
             nn.BatchNorm2d(ngf * 4),
             nn.ReLU(True),
             # state size. (ngf*4) x 8 x 8
-            nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=bias),
             nn.BatchNorm2d(ngf * 2),
             nn.ReLU(True),
             # state size. (ngf*2) x 16 x 16
-            nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=bias),
             nn.BatchNorm2d(ngf),
             nn.ReLU(True),
             # state size. (ngf) x 32 x 32
-            nn.ConvTranspose2d(ngf, nc, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(ngf, nc, 4, 2, 1, bias=bias),
             nn.Tanh()
             # state size. (nc) x 64 x 64
         )
@@ -75,38 +75,38 @@ class Generator(nn.Module):
         return self.main(input)
 
 
-# Discriminator code: DCGAN
-class Discriminator(nn.Module):
+class DCDiscriminator(nn.Module):
+    """DCGAN discriminator"""
+
     def __init__(
         self,
-        ngpu: int,
         nc: int,  # 3: color images; 1: grayscale
-        nz: int = 100,
-        ngf: int = 64,
-        ndf: int = 64,
+        nz: int,
+        ngf: int,
+        ndf: int,
         beta1: float = 0.5,
         bias: bool = False,
     ):
-        super(Discriminator, self).__init__()
-        self.ngpu = ngpu
+        super(DCDiscriminator, self).__init__()
+        # self.ngpu = ngpu
         self.main = nn.Sequential(
             # input is (nc) x 64 x 64
-            nn.Conv2d(nc, ndf, 4, 2, 1, bias=False),
+            nn.Conv2d(nc, ndf, 4, 2, 1, bias=bias),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf) x 32 x 32
-            nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=False),
+            nn.Conv2d(ndf, ndf * 2, 4, 2, 1, bias=bias),
             nn.BatchNorm2d(ndf * 2),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*2) x 16 x 16
-            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=False),
+            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 1, bias=bias),
             nn.BatchNorm2d(ndf * 4),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*4) x 8 x 8
-            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=False),
+            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 1, bias=bias),
             nn.BatchNorm2d(ndf * 8),
             nn.LeakyReLU(0.2, inplace=True),
             # state size. (ndf*8) x 4 x 4
-            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=False),
+            nn.Conv2d(ndf * 8, 1, 4, 1, 0, bias=bias),
             nn.Sigmoid(),
         )
 
@@ -115,18 +115,20 @@ class Discriminator(nn.Module):
 
 
 class DCGAN_ARCHITECTURE:
-    def __init__(self, ngpu: int = 1, nc: int = None, lr: float = 2e-4):
+    def __init__(self, ngpu: int = 1, nc: int = None, lr: float = 2e-4, nz: int = 100):
         super(DCGAN_ARCHITECTURE, self).__init__()
-        # # Spatial size of training images. All images will be resized to this
-        # #   size using a transformer.
+        # img dimensions
         # image_size = 64
-        #
-        # # Number of channels in the training images. For color images this is 3
+
+        # Number of img channels
         self.nc = nc
-        #
+
         # Number of training epochs
         # self.num_epochs = None
-        #
+
+        # latent dims
+        self.nz = nz
+        # learning rate
         self.lr = lr
         # Number of GPUs available. Use 0 for CPU mode.
         self.ngpu = ngpu
@@ -145,8 +147,10 @@ class DCGAN_ARCHITECTURE:
         self._set_discriminator()
 
     def _set_generator(self):
+        # import pdb; pdb.set_trace()
+
         # the generator
-        self.netG = Generator(self.ngpu).to(DEVICE)
+        self.netG = DCGenerator(self.nc, self.nz, self.ngf, self.ndf).to(DEVICE)
         # Handle multi-gpu if desired
         if (DEVICE.type == "cuda") and (self.ngpu > 1):
             self.netG = nn.DataParallel(self.netG, list(range(self.ngpu)))
@@ -156,7 +160,7 @@ class DCGAN_ARCHITECTURE:
 
     def _set_discriminator(self):
         # the Discriminator
-        self.netD = Discriminator(self.ngpu).to(DEVICE)
+        self.netD = DCDiscriminator(self.nc, self.nz, self.ngf, self.ndf).to(DEVICE)
         # Handle multi-gpu if desired
         if (DEVICE.type == "cuda") and (self.ngpu > 1):
             self.netD = nn.DataParallel(self.netD, list(range(self.ngpu)))
@@ -165,19 +169,33 @@ class DCGAN_ARCHITECTURE:
         self.netD.apply(weights_init)
 
 
+def weights_init(m):
+    """Custom weights initialization called on netG and netD"""
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
+
+
 class DCGAN(object):
     """Object.
-    wraps around DCGAN_ARCHITECTURE to enable convenient training, testing, and
-    synthetic sample generation.
+    Wraps around DCGAN_ARCHITECTURE to enable convenient training, testing,
+    and synthetic sample generation.
     """
 
     def __init__(self, ngpu: int = 1):
         self.nc = None
         self.ngpu = 1
         self.lr = 2e-4
+        self.nz = 100
 
     def _set_model(self):
-        self.model = DCGAN_ARCHITECTURE(nc=self.nc, lr=self.lr, ngpu=self.ngpu)
+        """Instantiates the main model architecture"""
+        self.model = DCGAN_ARCHITECTURE(
+            nc=self.nc, lr=self.lr, ngpu=self.ngpu, nz=self.nz
+        )
 
     def _train_one_epoch(self, epoch, train_loader):
         for i, data in enumerate(train_loader, 0):
@@ -193,7 +211,7 @@ class DCGAN(object):
                 (b_size,), self.real_label, dtype=torch.float, device=DEVICE
             )
             # Forward pass real batch through D
-            output = self.modelnetD(real_cpu).view(-1)
+            output = self.model.netD(real_cpu).view(-1)
             # Calculate loss on all-real batch
             errD_real = self.criterion(output, label)
             # Calculate gradients for D in backward pass
@@ -247,39 +265,43 @@ class DCGAN(object):
             self.G_losses.append(errG.item())
             self.D_losses.append(errD.item())
 
-            if (i == 0) and (epoch == 0):
+            # if (i == 0) and (epoch == 1):
+            if epoch == 1:
                 self.best_iter = 0
                 self.best_epoch = epoch
                 self.best_netG = self.model.netG
-                best_G_loss = self.G_losses[0]
+                self.best_G_loss = self.G_losses[0]
                 self.best_netD = self.model.netD
-                best_D_loss = self.D_losses[0]
+                self.best_D_loss = self.D_losses[0]
             else:
                 # keep the best Generator-Discriminator Pair
-                if (errG.item() < best_G_loss) and (errD.item() < best_D_loss):
+                if (errG.item() < self.best_G_loss) and (
+                    errD.item() < self.best_D_loss
+                ):
                     self.best_iter = i
                     self.best_epoch = epoch
                     self.best_netG = self.model.netG
-                    best_G_loss = errG.item()
+                    self.best_G_loss = errG.item()
                     self.best_netD = self.model.netD
-                    best_D_loss = errD.item()
+                    self.best_D_loss = errD.item()
 
             # Check how the generator is doing by saving G's output on
             # fixed_noise image_list tracks a visual/image progression of
             # the generator.
+            self.model.netG = self.best_netG
+            self.model.netD = self.best_netD
             if (self.iters % 500 == 0) or (
                 (epoch == self.num_epochs - 1) and (i == len(train_loader) - 1)
             ):
                 with torch.no_grad():
-                    fake = self.best_netG(self.fixed_noise).detach().cpu()
+                    fake = self.model.netG(self.fixed_noise).detach().cpu()
                 self.img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
 
             self.iters += 1
         # finished the training and update
 
-    def train(self, train_loader, num_epochs: int = 3):
-        """Convenience methog. Trains the model's generator and discriminator.
-        """
+    def train(self, train_loader, test_loader, num_epochs: int = 3):
+        """Convenience. Trains the model's generator and discriminator."""
         batch, labels = iter(train_loader).next()
 
         # reconstruction: (nc)hannels, (w)idth, (h)eight
@@ -291,12 +313,14 @@ class DCGAN(object):
 
         # training epochs
         self.num_epochs = num_epochs
-        # Learning rate for optimizers
-        self.lr = 0.0002
+        # # Learning rate for optimizers
+        # self.lr = 0.0002
         # Beta1 hyperparam for Adam optimizers
         self.beta1 = 0.5
         # Initialize BCELoss function
         self.criterion = nn.BCELoss()
+
+        self._set_model()
 
         # Establish convention for real and fake labels during training
         self.real_label = 1.0
@@ -323,10 +347,10 @@ class DCGAN(object):
         log.debug("Starting Training Loop...")
         self.iters = 0
         # For each epoch
-        for epoch in range(self.num_epochs):
+        for epoch in range(1, self.num_epochs + 1):
             self._train_one_epoch(epoch, train_loader)
-        self.model.netG = self.best_netG
-        self.model.netD = self.best_netD
+        # self.model.netG = self.best_netG
+        # self.model.netD = self.best_netD
 
         log.info(
             f"Generator and Discriminator Loss During Training "
@@ -336,13 +360,15 @@ class DCGAN(object):
 
     def plot_losses(self, ptitle: str = None, save_plot_dir: os.PathLike = None):
         """Helper.
-        Plots the generator and the discriminator losses higlighting the best iteration and best epoch.
+        Plots the generator and the discriminator losses higlighting the best
+        iteration and best epoch.
         """
         plt.figure(figsize=(10, 5))
         if ptitle is None:
             plt.title(
-                f"Generator and Discriminator Loss During Training (over {self.num_epochs} "
-                f"Epochs; best epoch: {self.best_epoch} & best_iter:{self.best_iter})"
+                f"Generator and Discriminator Loss During Training "
+                f"(over {self.num_epochs} Epochs; best epoch: "
+                f"{self.best_epoch} & best_iter:{self.best_iter})"
             )
         else:
             plt.title(ptitle)
@@ -358,17 +384,11 @@ class DCGAN(object):
 
     def generate_images(self, num_samples: int, save_directory: os.PathLike):
         """
-        # confirm to ImageFolder structure:
-        save_directory = f"/data/{SYNTHESIZER_NAME}/{DATASET_NAME}/{DATA_SRC}/{class_idx}/"
-        example:
-        save_directory = f"/data/mnist_dcgan/train/0/"
-        save_directory = f"/data/mnist_dcgan/val/0/"
         """
         fixed_noise = torch.randn(num_samples, self.nz, 1, 1, device=DEVICE)
         with torch.no_grad():
-            fake = self.netG(fixed_noise).detach().cpu()
+            fake = self.model.netG(fixed_noise).detach().cpu()
 
-        # img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
         for i, img in enumerate(fake):
             img_dst_path = f"{save_directory}sample_{i}.png"
             vutils.save_image(img, img_dst_path, normalize=True)
@@ -377,37 +397,62 @@ class DCGAN(object):
         """Helper.
         Saves the generator and the discriminator.
         """
-        self.netG_path = f"{model_path}_{self.nz}components_BEST_dcgan_G.pth"
-        torch.save(self.model.netG.state_dict(), self.netG_path)
-        self.netD_path = f"{model_path}_{self.nz}components_BEST_dcgan_D.pth"
-        torch.save(self.model.netD.state_dict(), self.netD_path)
+        kwargs = {
+            "nc": self.nc,
+            "h": self.h,
+            "w": self.w,
+            "lr": self.lr,
+            "nz": self.nz,
+        }
+
+        # The Generator
+        self.netG_path = f"{model_path}dcgan_G_BEST.pth"
+        torch.save(
+            {
+                "model_state_dict": self.model.netG.state_dict(),
+                "netG_args": kwargs,
+            },
+            self.netG_path,
+        )
+
+        # The Discriminator
+        self.netD_path = f"{model_path}dcgan_D_BEST.pth"
+        torch.save(
+            {
+                "model_state_dict": self.model.netD.state_dict(),
+                "netD_args": kwargs,
+            },
+            self.netD_path,
+        )
 
     def load_model(self, netG_path: os.PathLike, netD_path: os.PathLike):
         """Helper.
         Loads the generator and the discriminator.
         """
+        # load the D & G checkpoints
+        # generator
+        self.netG_path = f"{netG_path}dcgan_G_BEST.pth"
+        checkpointG = torch.load(self.netG_path)
+        # discriminator
+        self.netD_path = f"{netD_path}dcgan_D_BEST.pth"
+        checkpointD = torch.load(self.netD_path)
+        # extract model specific args
+        self.nc = checkpointG["nc"]
+        self.h = checkpointG["h"]
+        self.w = checkpointG["w"]
+        self.lr = checkpointG["lr"]
+        self.nz = checkpointG["nz"]
+        # set the modelarchitecture
         self._set_model()
         # set the generator and dsicriminator architectures
         self._set_generator()
         self._set_discriminator()
-        # self.netG_path = f"{model_save_path}_{self.nz}components_BEST_dcgan_G.pth"
-        self.netG_path = netG_path
-        self.netD_path = netD_path
-        # load the pre-trained existing weights
-        self.model.netG.load_state_dict(torch.load(self.netG_path))
-        self.model.netD.load_state_dict(torch.load(self.netD_path))
+        # load the state dictionaries: D & G
+        self.model.netG.load_state_dict(checkpointG["model_state_dict"])
+        self.model.netD.load_state_dict(checkpointD["model_state_dict"])
         return self
 
 
-def weights_init(m):
-    """Custom weights initialization called on netG and netD"""
-    classname = m.__class__.__name__
-    if classname.find("Conv") != -1:
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find("BatchNorm") != -1:
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
-
-
 if __name__ == "__main__":
-    dcgan = DCGAN()
+    dcgan_model = DCGAN()
+    print(dcgan_model)
