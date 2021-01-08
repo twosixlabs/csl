@@ -36,6 +36,7 @@ METHODS = {
     "vae": vaes.VAE(),
     "cvae": vaes.CVAE(),
     "dcgan": gans.DCGAN(),
+    "acgan": gans.ACGAN(),
 }
 
 # datasets
@@ -160,7 +161,11 @@ def parse_args():
 def get_label_counts(dataset_name, class_idx):
 
     train_loader, test_loader = dsets.get_dataloaders(
-        dataset_name, batch_size=16, image_size=28, num_workers=1, class_idx=class_idx,
+        dataset_name,
+        batch_size=16,
+        image_size=28,
+        num_workers=1,
+        class_idx=class_idx,
     )
     train_unique_labels, train_label_counts = torch.unique(
         torch.as_tensor(train_loader.dataset.targets), return_counts=True
@@ -191,7 +196,7 @@ def synthesize_using_pretrained(
     dataset_name: str = None,
     load_model_path: os.PathLike = None,
     num_workers: int = 4,
-    class_idx: int = "all",
+    class_index: int = "all",
     tasks: list = ["train"],
     num_samples: int = "all",
     data_save_dir: os.PathLike = "temp/datasets/",
@@ -201,17 +206,25 @@ def synthesize_using_pretrained(
     the given save_dir location
     """
     # load the model
-    model = METHODS[method].load(load_model_path)
-    # model = model.load_model(args.load_model_path)
+    model = METHODS[method].load_model(load_model_path)
 
-    # generate based on task
+    label_info = get_label_counts(dataset_name, class_index)
+
+    if (num_samples is None) or (num_samples == "all"):
+        num_samples = "all"
+
     for task in tasks:
-        if (num_samples is not None) or (not num_samples == "all"):
-            label_info = get_label_counts(args.dataset_name, args.class_index)
-            num_samples = label_info[f"{task}_labels"][1]
-        data_save_dir = f"{data_save_dir}{dataset_name}_{method}/{task}/{class_idx}/"
-        confirm_directory(data_save_dir)
-        model.generate_images(num_samples, data_save_dir)
+        if (class_index is None) or (class_index == "all"):
+            unique_labels = label_info[f"{task}_labels"][0]
+        else:
+            unique_labels = [class_index]
+
+        # generate based on task
+        for idx in unique_labels:  # all class indices
+            data_dir = f"{data_save_dir}{dataset_name}_{method}/{task}/{idx}/"
+            confirm_directory(data_dir)
+            num_samples = label_info[f"{task}_labels"][1][idx]
+            model.generate_images(num_samples, data_dir)
 
 
 def train_and_synthesize(
@@ -219,7 +232,7 @@ def train_and_synthesize(
     dataset_name: str = None,
     batch_size: int = 32,
     num_workers: int = 4,
-    class_idx: int = "all",
+    class_index: int = "all",
     num_epochs: int = 3,
     image_dim: int = None,
     tasks: list = ["train"],
@@ -254,24 +267,22 @@ def train_and_synthesize(
         ]
     )
 
-    label_info = get_label_counts(args.dataset_name, class_idx)
+    label_info = get_label_counts(dataset_name, class_index)
 
     if (num_samples is None) or (num_samples == "all"):
         num_samples = "all"
 
-    # import pdb
-
-    # generate based on task
     for task in tasks:
-        if (class_idx is None) or (class_idx == "all"):
+        if (class_index is None) or (class_index == "all"):
             unique_labels = label_info[f"{task}_labels"][0]
         else:
             unique_labels = [args.class_index]
 
+        # generate based on task
         for idx in unique_labels:  # all class indices
             # dataloaders for the specific class
             train_loader, test_loader = dsets.get_dataloaders(
-                args.dataset_name,
+                dataset_name,
                 batch_size=batch_size,
                 image_size=image_dim,
                 num_workers=num_workers,
@@ -279,25 +290,22 @@ def train_and_synthesize(
                 train_transforms=train_transforms,
                 test_transforms=test_transforms,
             )
+
             if task == "train":
                 model = METHODS[method]
                 model.train(train_loader, test_loader, num_epochs=num_epochs)
-                model_save_dir = (
-                    f"{model_save_dir}{dataset_name}_{method}/{task}/{class_idx}/"
-                )
-                confirm_directory(model_save_dir)
-                model.save_model(model_path=model_save_dir)
-            # pdb.set_trace()
-            num_samples = (
-                label_info[f"{task}_labels"][1][class_idx]
-                if num_samples == "all"
-                else num_samples
-            )
-            data_save_dir = (
-                f"{data_save_dir}{dataset_name}_{method}/{task}/{class_idx}/"
-            )
-            confirm_directory(data_save_dir)
-            model.generate_images(num_samples, data_save_dir)
+                model_dir = f"{model_save_dir}{dataset_name}_{method}/{task}/{idx}/"
+                confirm_directory(model_dir)
+                model.save_model(model_path=model_dir)
+            elif task == "eval":
+                model = METHODS[method]
+                model.load_model(model_path=model_dir)
+
+            num_samples = label_info[f"{task}_labels"][1][idx]
+            log.info(f"Creating the {idx}-class data with {num_samples}-samples")
+            data_dir = f"{data_save_dir}{dataset_name}_{method}/{task}/{idx}/"
+            confirm_directory(data_dir)
+            model.generate_images(num_samples, data_dir)
 
 
 def prep_args(args, approach) -> dict:
@@ -308,7 +316,7 @@ def prep_args(args, approach) -> dict:
         "dataset_name": args.dataset_name,
         "data_save_dir": args.data_save_dir,
         "model_save_dir": args.model_save_dir,
-        "class_idx": args.class_index,
+        "class_index": args.class_index,
     }
     # train before generating images
     if approach == "train_model":
@@ -336,7 +344,9 @@ def prep_args(args, approach) -> dict:
             tasks = ["train"]
 
         kwargs.update(
-            {"load_model_path": args.load_model_path,}
+            {
+                "load_model_path": args.load_model_path,
+            }
         )
 
     else:
@@ -352,7 +362,7 @@ def prep_args(args, approach) -> dict:
     return kwargs
 
 
-def synthesize(args):
+def synthesize(args: dict):
     """Command Line Convenience (cli) method to parse args and generate synthetic
     data samples.
     It can be used to load pre-trained model or train a model from scrath.
@@ -383,7 +393,6 @@ def synthesize(args):
         # cannot handle "val" task alone -- must throw an error.
         kwargs = prep_args(args, "load_model")
         del kwargs["load_model_path"]
-        # import pdb; pdb.set_trace()
         train_and_synthesize(**kwargs)
 
 
