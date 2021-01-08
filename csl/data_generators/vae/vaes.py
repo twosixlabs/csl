@@ -28,7 +28,8 @@ log = logging.getLogger(__name__)
 coloredlogs.install(level="info", logger=log)
 
 # Set random seed for reproducibility
-MANUAL_SEED = 999
+# MANUAL_SEED = 999
+MANUAL_SEED = None
 
 # manualSeed = random.randint(1, 10000) # use if you want new results
 if MANUAL_SEED is not None:
@@ -41,8 +42,7 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class VariationalAutoEncoder(nn.Module):
-    """ Prototype.
-    """
+    """Prototype."""
 
     def __init__(self):
         super(VariationalAutoEncoder, self).__init__()
@@ -252,8 +252,8 @@ class CVAE_ARCHITECTURE(nn.Module):
         return self.decode(z), mu, logvar
 
     def sample(self, n_samples: int = 1, n_channels: int = 1, seed: int = None):
-        if seed is not None:
-            torch.manual_seed(seed)
+        # if seed is not None:
+        #     torch.manual_seed(seed)
         # sample = torch.randn(n_samples * n_channels, self.nz)
         sample = torch.randn(n_samples, self.nz)
         if self.cuda():
@@ -285,7 +285,6 @@ class CVAE_ARCHITECTURE(nn.Module):
         log_var = Variable(torch.randn(n_samples * image_channels, self.z_dim))
 
         with torch.no_grad():
-            # vae.cpu()
             z = self.reparemetrize(mu, log_var)
             z = z.cuda()
 
@@ -303,7 +302,7 @@ class CVAE_ARCHITECTURE(nn.Module):
                 os.makedirs(save_path)
             for image_counter, img in enumerate(tensor_image):
                 img_dst_path = f"{save_path}sample_{image_counter}.png"
-                vutils.save_image(img, img_dst_path, normalize=True)
+                vutils.save_image(img, img_dst_path, normalize=False)
         log.info(f"Generated {image_counter} samples")
 
 
@@ -313,12 +312,12 @@ class VAE(object):
     synthetic sample generation.
     """
 
-    def __init__(self):
+    def __init__(self, h_dim1=512, h_dim2=256, fidelity=1.0, z_dim=None):
         self.model = None
-        self.h_dim1 = 512
-        self.h_dim2 = 256
-        self.fidelity = 0.5  # range: (0.0, 1.0]
-        self.z_dim = None
+        self.h_dim1 = h_dim1
+        self.h_dim2 = h_dim2
+        self.fidelity = fidelity  # range: (0.0, 1.0]
+        self.z_dim = z_dim
         # self._set_vae()
 
     def _train_one_epoch(self, epoch, train_loader):
@@ -327,9 +326,9 @@ class VAE(object):
         self.model.train()
         train_loss = 0
         ttotal = len(train_loader)
-        # for batch_idx, (data, _) in enumerate(train_loader):
         for batch_idx, (data, _) in zip(
-            tqdm(range(ttotal), desc=f"Train Batch {epoch}"), train_loader,
+            tqdm(range(ttotal), desc=f"Train Batch {epoch}"),
+            train_loader,
         ):
             # for batch_idx, (data, _) in enumerate(train_loader):
             data = data.to(DEVICE)
@@ -372,7 +371,6 @@ class VAE(object):
         test_loss = 0
         with torch.no_grad():
             for data, _ in test_loader:
-                # data = data.cuda()
                 data = data.cuda()
                 recon, mu, log_var = self.model(data)
 
@@ -384,6 +382,7 @@ class VAE(object):
         return test_loss
 
     def _set_model(self):
+
         self.model = VAE_ARCHITECTURE(
             x_dim=self.x_dim, h_dim1=self.h_dim1, h_dim2=self.h_dim2, z_dim=self.z_dim
         )
@@ -440,12 +439,14 @@ class VAE(object):
                     self.best_model = self.model
                     self.best_epoch = epoch
                     self.best_loss = self.val_loss
+
+        self.model = self.best_model
         log.info(
             f">>> Completed training and evaluation of '{self.model}'. "
             "Ready to generate samples."
         )
 
-        return self
+        # return self
 
     def plot_losses(self, ptitle: str = None, save_plot_dir: os.PathLike = None):
         # plot the losses: train & val
@@ -477,35 +478,57 @@ class VAE(object):
 
     def save_model(self, model_path: os.PathLike = "temp/models/"):
         """Helper.
-        Saves the generator and the discriminator.
+        Saves the state dictionary and model parameters. A model can be
+        loaded to continue training and/or to evaluate.
         """
-        self.model_path = f"{model_path}vae_{self.z_dim}components_BEST.pth"
-        torch.save(self.model.state_dict(), self.model_path)
+
+        kwargs = {
+            "x_dim": self.x_dim,
+            "h_dim1": self.h_dim1,
+            "h_dim2": self.h_dim2,
+            # "fidelity": self.fidelity,
+            "z_dim": self.z_dim,
+            "nc": self.nc,
+            "h": self.h,
+            "w": self.w,
+        }
+
+        self.model_path = f"{model_path}vae_BEST.pth"
+
+        torch.save(
+            {
+                "model_state_dict": self.best_model.state_dict(),
+                "net_args": kwargs,
+            },
+            self.model_path,
+        )
 
     def load_model(self, model_path: os.PathLike = "temp/models/"):
         """Helper.
-        Loads the generator and the discriminator.
+        Loads the model and its parameters.
         """
+        # load the checkpoint
+        self.model_path = f"{model_path}vae_BEST.pth"
+        checkpoint = torch.load(self.model_path)
+        # extract model specific  args
+        kwargs = checkpoint["net_args"]
+        self.x_dim = kwargs["x_dim"]
+        self.h_dim1 = kwargs["h_dim1"]
+        self.h_dim1 = kwargs["h_dim1"]
+        self.h_dim2 = kwargs["h_dim2"]
+        self.z_dim = kwargs["z_dim"]
+        self.nc = kwargs["nc"]
+        self.h = kwargs["h"]
+        self.w = kwargs["w"]
+
         # set the modelarchitecture
+        self._set_model()
 
-        self.model = VAE(
-            x_dim=self.x_dim, h_dim1=self.h_dim1, h_dim2=self.h_dim2, z_dim=self.z_dim
-        )
-
-        # self.model_path = f"{model_save_path}_{self.z_dim}components_BEST_vae.pth"
-        self.model_path = f"{model_path}vae_{self.z_dim}components_BEST.pth"
         return self
 
     def generate_images(
-        self, num_samples: int, save_directory: os.PathLike, seed: int = 0
+        self, num_samples: int, save_directory: os.PathLike, seed: int = MANUAL_SEED
     ):
-        """
-        # confirm to ImageFolder structure:
-        save_directory = f"/data/{SYNTHESIZER_NAME}/{DATASET_NAME}/{DATA_SRC}/{class_idx}/"
-        example:
-        save_directory = f"/data/mnist_vae/train/0/"
-        save_directory = f"/data/mnist_vae/val/0/"
-        """
         with torch.no_grad():
             samples = self.model.sample(num_samples, self.nc, seed=seed)
         tensor_image = samples.view(-1, self.nc, self.h, self.w).cpu()
@@ -517,17 +540,14 @@ class VAE(object):
 
 
 def init_xavier(m):
-    """ xavier weight initialization
-    """
+    """xavier weight initialization"""
     if type(m) == nn.Linear:
         nn.init.xavier_uniform(m.weight)
-        # TODO: evealuate this effect
         m.bias.data.fill_(0.01)
 
 
 def init_kaiming(m):
-    """kaiming weight initialization
-    """
+    """kaiming weight initialization"""
     if type(m) == nn.Linear:
         weights, bias = m.named_parameters()
         m.weight = torch.nn.Parameter(
@@ -543,7 +563,9 @@ class CVAE(VAE):
     training, testing, and synthetic sample generation.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+    ):
         self.model = None
         # variables set in .train()
         self.x_dim = None
@@ -559,6 +581,57 @@ class CVAE(VAE):
         self.model = CVAE_ARCHITECTURE(
             x_dim=self.x_dim, nz=self.z_dim, nc=self.nc, ngf=self.ngf, ndf=self.ndf
         )
+
+    def save_model(self, model_path: os.PathLike = "temp/models/"):
+        """Helper.
+        Saves the state dictionary and model parameters. A model can be
+        loaded to continue training and/or to evaluate.
+        """
+
+        kwargs = {
+            "x_dim": self.x_dim,
+            "ngf": self.ngf,
+            "ndf": self.ndf,
+            "fidelity": self.fidelity,
+            "z_dim": self.z_dim,
+            "nc": self.nc,
+            "h": self.h,
+            "w": self.w,
+            "h_dim2": self.h_dim2,
+        }
+
+        self.model_path = f"{model_path}cvae_BEST.pth"
+
+        torch.save(
+            {
+                "model_state_dict": self.best_model.state_dict(),
+                "net_args": kwargs,
+            },
+            self.model_path,
+        )
+
+    def load_model(self, model_path: os.PathLike = "temp/models/"):
+        """Helper.
+        Loads the model and its parameters.
+        """
+        # load the checkpoint
+        self.model_path = f"{model_path}vae_BEST.pth"
+        checkpoint = torch.load(self.model_path)
+        # extract model specific  args
+        kwargs = checkpoint["net_args"]
+        self.x_dim = kwargs["x_dim"]
+        self.h_dim2 = kwargs["h_dim2"]
+        self.z_dim = kwargs["z_dim"]
+        self.nc = kwargs["nc"]
+        self.h = kwargs["h"]
+        self.w = kwargs["w"]
+        self.ngf = kwargs["ngf"]
+        self.ndf = kwargs["ndf"]
+
+        # set the modelarchitecture
+        self._set_model()
+
+        return self
 
 
 if __name__ == "__main__":
