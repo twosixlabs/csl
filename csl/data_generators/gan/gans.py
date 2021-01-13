@@ -16,6 +16,7 @@ import torch.nn as nn
 import torchvision.utils as vutils
 import torch.nn.parallel
 import torch.optim as optim
+from torch.autograd import Variable
 import matplotlib.pyplot as plt
 
 log = logging.getLogger(__name__)
@@ -179,6 +180,37 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 
+def compute_immediate_sensitivity(model, inp, loss) -> list:
+    """"""
+    # pdb.set_trace()
+
+    # inp = Variable(data, requires_grad=True)
+    cpu_loss = loss
+    # cpu_loss = Variable(loss, requires_grad=True)
+    # (1) first-order gradient (wrt parameters)
+    first_order_grads = torch.autograd.grad(
+        cpu_loss,
+        model.parameters(),
+        retain_graph=True,
+        create_graph=True,
+        # allow_unused=True
+    )
+
+    # (2) L2 norm of the gradient from (1)
+    grad_l2_norm = torch.norm(torch.cat([x.view(-1) for x in first_order_grads]), p=2)
+
+    # (3) Gradient (wrt inputs) of the L2 norm of the gradient from (2)
+    sensitivity_vec = torch.autograd.grad(grad_l2_norm, inp, retain_graph=True)[0]
+
+    # (4) L2 norm of (3) - "immediate sensitivity"
+    # sensitivity = [torch.norm(v, p=2).item() for v in sensitivity_vec]
+    sensitivity = torch.norm(
+        sensitivity_vec.view(sensitivity_vec.shape[0], -1), p=2, dim=1
+    )
+
+    return sensitivity
+
+
 class DCGAN(object):
     """Object.
     Wraps around DCGAN_ARCHITECTURE to enable convenient training, testing,
@@ -191,6 +223,11 @@ class DCGAN(object):
         self.lr = 2e-4
         self.nz = 100
 
+        self.mean_epoch_sensitivities = []
+        self.max_epoch_sigmas = []
+        self.mean_epoch_sigmas = []
+        self.max_epoch_sensitivities = []
+
     def _set_model(self):
         """Instantiates the main model architecture"""
         self.model = DCGAN_ARCHITECTURE(
@@ -198,6 +235,10 @@ class DCGAN(object):
         )
 
     def _train_one_epoch(self, epoch, train_loader):
+
+        self.batch_sensitivities = []
+        self.batch_sigmas = []
+
         for i, data in enumerate(train_loader, 0):
             ############################
             # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
@@ -205,18 +246,49 @@ class DCGAN(object):
             # Train with all-real batch
             self.model.netD.zero_grad()
             # Format batch
-            real_cpu = data[0].to(DEVICE)
-            b_size = real_cpu.size(0)
+            data = data[0].to(DEVICE)
+            b_size = data.size(0)
             label = torch.full(
                 (b_size,), self.real_label, dtype=torch.float, device=DEVICE
             )
+
+            # step 1. prepare data
+            # data = data.to(DEVICE)
+            # inp = torch.clone(data).to(DEVICE)
+            data = Variable(data, requires_grad=True)
+
+            # step 2. compute loss
             # Forward pass real batch through D
-            output = self.model.netD(real_cpu).view(-1)
+            output = self.model.netD(data).view(-1)
             # Calculate loss on all-real batch
             errD_real = self.criterion(output, label)
+
+            # step 3. call sensitivity computation
+            batch_sensitivities = compute_immediate_sensitivity(
+                self.model.netD, data, errD_real
+            )
+            batch_sensitivity = torch.max(batch_sensitivities) / len(data)
+            self.batch_sensitivities.append(batch_sensitivity.item())
+
             # Calculate gradients for D in backward pass
             errD_real.backward()
+
             D_x = output.mean().item()
+
+            # step 4. compute noise
+            # this is the scale of the Gaussian noise to be added to the batch gradient
+            sigma = torch.sqrt(
+                (batch_sensitivity ** 2 * self.alpha) / (2 * self.epsilon_iter)
+            )
+            self.batch_sigmas.append(sigma.item())
+
+            # step 5. update gradients with computed sensitivities
+            with torch.no_grad():
+                for p in self.model.netD.parameters():
+                    p.grad += sigma * torch.randn(1).to(DEVICE)
+
+            # first forward with real-data only
+            self.optimizerD.step()
 
             # Train with all-fake batch
             # Generate batch of latent vectors
@@ -233,20 +305,38 @@ class DCGAN(object):
             D_G_z1 = output.mean().item()
             # Add the gradients from the all-real and all-fake batches
             errD = errD_real + errD_fake
-            # Update D
+            # Update D: with real and fake data -- second step
             self.optimizerD.step()
 
             ############################
             # (2) Update G network: maximize log(D(G(z)))
             ###########################
+
+            # # recon_batch, mu, log_var = self.model.forward(data)
+            # recon_batch, mu, log_var = self.model.forward(inp)
+            # loss = self.model.loss_function(recon_batch, data, mu, log_var)
+            # batch_sensitivities = compute_immediate_sensitivity(self.model, inp, loss)
+            # loss.backward()
+
+            # batch_sensitivity = torch.max(batch_sensitivities) / len(data)
+            # self.batch_sensitivities.append(batch_sensitivity.item())
+
+            # # this is the scale of the Gaussian noise to be added to the batch gradient
+            # sigma = torch.sqrt(
+            #     (batch_sensitivity ** 2 * self.alpha) / (2 * self.epsilon_iter)
+            # )
+            # self.batch_sigmas.append(sigma.item())
+
             self.model.netG.zero_grad()
             label.fill_(self.real_label)  # fake labels are real for generator cost
             # Since we just updated D, perform another forward pass of all-fake batch through D
             output = self.model.netD(fake).view(-1)
+
             # Calculate G's loss based on this output
             errG = self.criterion(output, label)
-            # Calculate gradients for G
             errG.backward()
+
+            # Calculate gradients for G
             D_G_z2 = output.mean().item()
             # Update G
             self.optimizerG.step()
@@ -300,7 +390,15 @@ class DCGAN(object):
             self.iters += 1
         # finished the training and update
 
-    def train(self, train_loader, test_loader, num_epochs: int = 3):
+    def train(
+        self,
+        train_loader,
+        test_loader,
+        num_epochs: int = 3,
+        enable_immediate_sensitivity: bool = True,
+        alpha: float = 20.0,
+        epsilon: float = 0.5,
+    ):
         """Convenience. Trains the model's generator and discriminator."""
         batch, labels = iter(train_loader).next()
 
@@ -320,6 +418,13 @@ class DCGAN(object):
         # Initialize BCELoss function
         self.criterion = nn.BCELoss()
 
+        # privacy parameters
+        # parameters for Renyi differential privacy
+        self.alpha = alpha
+        self.epsilon = epsilon
+        self.epsilon_iter = self.epsilon / self.num_epochs
+
+        # setup the model
         self._set_model()
 
         # Establish convention for real and fake labels during training
@@ -408,20 +513,14 @@ class DCGAN(object):
         # The Generator
         self.netG_path = f"{model_path}dcgan_G_BEST.pth"
         torch.save(
-            {
-                "model_state_dict": self.model.netG.state_dict(),
-                "netG_args": kwargs,
-            },
+            {"model_state_dict": self.model.netG.state_dict(), "netG_args": kwargs,},
             self.netG_path,
         )
 
         # The Discriminator
         self.netD_path = f"{model_path}dcgan_D_BEST.pth"
         torch.save(
-            {
-                "model_state_dict": self.model.netD.state_dict(),
-                "netD_args": kwargs,
-            },
+            {"model_state_dict": self.model.netD.state_dict(), "netD_args": kwargs,},
             self.netD_path,
         )
 
