@@ -373,13 +373,11 @@ class VAE(object):
         train_loss = 0
         ttotal = len(train_loader)
         for batch_idx, (data, _) in zip(
-            tqdm(range(ttotal), desc=f"Train Batch {epoch}"),
-            train_loader,
+            tqdm(range(ttotal), desc=f"Train Batch {epoch}"), train_loader,
         ):
             # for batch_idx, (data, _) in enumerate(train_loader):
             self.optimizer.zero_grad()
 
-            # TODO: ask joe why a castiund 'data' as Variable that requires_grad aroudn the input
             data = data.to(DEVICE)
             inp = torch.clone(data).to(DEVICE)
             inp = Variable(inp, requires_grad=True)
@@ -473,7 +471,7 @@ class VAE(object):
         test_loader,
         num_epochs: int = 3,
         enable_immediate_sensitivity: bool = True,
-        alpha: float = 2.0,
+        alpha: float = 20.0,
         epsilon: float = 0.5,
     ):
         """Convenience.
@@ -496,11 +494,10 @@ class VAE(object):
         self.z_dim = int(self.x_dim * self.fidelity)
 
         # privacy parameters
-        n_iters = self.num_epochs * self.batch_size
         # parameters for Renyi differential privacy
         self.alpha = alpha
         self.epsilon = epsilon
-        self.epsilon_iter = self.epsilon / n_iters
+        self.epsilon_iter = self.epsilon / self.num_epochs
 
         # setup the model
         self._set_model()
@@ -592,10 +589,7 @@ class VAE(object):
         self.model_path = f"{model_path}vae_BEST.pth"
 
         torch.save(
-            {
-                "model_state_dict": self.best_model.state_dict(),
-                "net_args": kwargs,
-            },
+            {"model_state_dict": self.best_model.state_dict(), "net_args": kwargs,},
             self.model_path,
         )
 
@@ -659,9 +653,7 @@ class CVAE(VAE):
     training, testing, and synthetic sample generation.
     """
 
-    def __init__(
-        self,
-    ):
+    def __init__(self,):
         self.model = None
         # variables set in .train()
         self.x_dim = None
@@ -699,10 +691,7 @@ class CVAE(VAE):
         self.model_path = f"{model_path}cvae_BEST.pth"
 
         torch.save(
-            {
-                "model_state_dict": self.best_model.state_dict(),
-                "net_args": kwargs,
-            },
+            {"model_state_dict": self.best_model.state_dict(), "net_args": kwargs,},
             self.model_path,
         )
 
