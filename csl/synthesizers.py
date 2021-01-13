@@ -161,11 +161,7 @@ def parse_args():
 def get_label_counts(dataset_name, class_idx):
 
     train_loader, test_loader = dsets.get_dataloaders(
-        dataset_name,
-        batch_size=16,
-        image_size=28,
-        num_workers=1,
-        class_idx=class_idx,
+        dataset_name, batch_size=16, image_size=28, num_workers=1, class_idx=class_idx,
     )
     train_unique_labels, train_label_counts = torch.unique(
         torch.as_tensor(train_loader.dataset.targets), return_counts=True
@@ -276,7 +272,7 @@ def train_and_synthesize(
         if (class_index is None) or (class_index == "all"):
             unique_labels = label_info[f"{task}_labels"][0]
         else:
-            unique_labels = [args.class_index]
+            unique_labels = [class_index]
 
         # generate based on task
         for idx in unique_labels:  # all class indices
@@ -344,9 +340,7 @@ def prep_args(args, approach) -> dict:
             tasks = ["train"]
 
         kwargs.update(
-            {
-                "load_model_path": args.load_model_path,
-            }
+            {"load_model_path": args.load_model_path,}
         )
 
     else:
