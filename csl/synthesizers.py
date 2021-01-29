@@ -20,16 +20,14 @@ import argparse
 # torch
 import torch
 from torchvision import transforms
-
-# custom
 from data_generators.vae import vaes
 from data_generators.gan import gans
 import datasets as dsets
 from utils.utils import confirm_directory
 
 # storage
-MODELS_DIR = "~/Documents/twosix/models"
-DATA_DIR = "~/Documents/twosix/datasets"
+MODELS_DIR = "models"
+DATA_DIR = "datasets"
 
 # supported generative methods
 METHODS = {
@@ -80,7 +78,6 @@ def parse_args():
         default=0,  # all
         required=False,
     )
-
     parser.add_argument(
         "--num_samples",
         help="int, number of sampled to generate (default='all')",
@@ -154,14 +151,31 @@ def parse_args():
         type=int,
         required=False,
     )
-
+    parser.add_argument(
+        "--alpha",
+        help="float, Renyi alpha privacy parameter (default=None)",
+        default=None,
+        type=float,
+        required=False,
+    )
+    parser.add_argument(
+        "--epsilon",
+        help="float, Renyi epsilon privacy parameter (default=None)",
+        default=None,
+        type=float,
+        required=False,
+    )
     return parser.parse_args()
 
 
 def get_label_counts(dataset_name, class_idx):
 
     train_loader, test_loader = dsets.get_dataloaders(
-        dataset_name, batch_size=16, image_size=28, num_workers=1, class_idx=class_idx,
+        dataset_name,
+        batch_size=16,
+        image_size=28,
+        num_workers=1,
+        class_idx=class_idx,
     )
     train_unique_labels, train_label_counts = torch.unique(
         torch.as_tensor(train_loader.dataset.targets), return_counts=True
@@ -217,7 +231,10 @@ def synthesize_using_pretrained(
 
         # generate based on task
         for idx in unique_labels:  # all class indices
-            data_dir = f"{data_save_dir}{dataset_name}_{method}/{task}/{idx}/"
+            if data_save_dir is None:
+                data_dir = f"temp/datasets/{dataset_name}_{method}/{task}/{idx}/"
+            else:
+                data_dir = data_save_dir
             confirm_directory(data_dir)
             num_samples = label_info[f"{task}_labels"][1][idx]
             model.generate_images(num_samples, data_dir)
@@ -235,6 +252,8 @@ def train_and_synthesize(
     num_samples: int = "all",
     data_save_dir: os.PathLike = "temp/datasets/",
     model_save_dir: os.PathLike = "temp/models/",
+    alpha: float = None,
+    epsilon: float = None,
 ):
 
     normalize_strategy = (
@@ -289,8 +308,17 @@ def train_and_synthesize(
 
             if task == "train":
                 model = METHODS[method]
-                model.train(train_loader, test_loader, num_epochs=num_epochs)
-                model_dir = f"{model_save_dir}{dataset_name}_{method}/{task}/{idx}/"
+                model.train(
+                    train_loader,
+                    test_loader,
+                    num_epochs=num_epochs,
+                    alpha=alpha,
+                    epsilon=epsilon,
+                )
+                if (alpha is not None) and (epsilon is not None):
+                    model_dir = f"{model_save_dir}{dataset_name}_{method}_dp_{alpha}a_{epsilon}e/{task}/{idx}/"
+                else:
+                    model_dir = f"{model_save_dir}{dataset_name}_{method}/{task}/{idx}/"
                 confirm_directory(model_dir)
                 model.save_model(model_path=model_dir)
             elif task == "eval":
@@ -299,7 +327,10 @@ def train_and_synthesize(
 
             num_samples = label_info[f"{task}_labels"][1][idx]
             log.info(f"Creating the {idx}-class data with {num_samples}-samples")
-            data_dir = f"{data_save_dir}{dataset_name}_{method}/{task}/{idx}/"
+            if (alpha is not None) and (epsilon is not None):
+                data_dir = f"{data_save_dir}{dataset_name}_{method}_dp_{alpha}a_{epsilon}e/{task}/{idx}/"
+            else:
+                data_dir = f"{data_save_dir}{dataset_name}_{method}/{task}/{idx}/"
             confirm_directory(data_dir)
             model.generate_images(num_samples, data_dir)
 
@@ -340,7 +371,9 @@ def prep_args(args, approach) -> dict:
             tasks = ["train"]
 
         kwargs.update(
-            {"load_model_path": args.load_model_path,}
+            {
+                "load_model_path": args.load_model_path,
+            }
         )
 
     else:
@@ -359,7 +392,7 @@ def prep_args(args, approach) -> dict:
 def synthesize(args: dict):
     """Command Line Convenience (cli) method to parse args and generate synthetic
     data samples.
-    It can be used to load pre-trained model or train a model from scrath.
+    It can be used to load a pre-trained model or train a model from scrath.
     The task class_idx and num_samples argmuments can be used to mimic
     a dataset class label distribution (sample instance count).
     If training and mimicking the method trains a new synthesizer for each
