@@ -182,11 +182,7 @@ def weights_init(m):
 
 def compute_immediate_sensitivity(model, inp, loss) -> list:
     """"""
-    # pdb.set_trace()
-
-    # inp = Variable(data, requires_grad=True)
     cpu_loss = loss
-    # cpu_loss = Variable(loss, requires_grad=True)
     # (1) first-order gradient (wrt parameters)
     first_order_grads = torch.autograd.grad(
         cpu_loss,
@@ -204,7 +200,6 @@ def compute_immediate_sensitivity(model, inp, loss) -> list:
 
     # (4) L2 norm of (3) - "immediate sensitivity"
     # sensitivity = [torch.norm(v, p=2).item() for v in sensitivity_vec]
-    # import pdb; pdb.set_trace()
     sensitivity = torch.norm(
         sensitivity_vec.reshape(sensitivity_vec.shape[0], -1), p=2, dim=1
     )
