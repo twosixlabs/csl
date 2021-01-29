@@ -48,8 +48,6 @@ from torchvision.datasets import (
     STL10,
     ImageFolder,
 )
-
-import pdb
 from torch.utils.data import Subset, ConcatDataset
 from sklearn.model_selection import train_test_split
 
@@ -83,10 +81,12 @@ DATASETS = {
     # imagenette_vae: ImageFolder,
     # imagenette_cvae: ImageFolder,
     # imagenette_dcgan: ImageFolder,
-    # "mnist_dcgan": ImageFolder,
+    "mnist_dcgan": ImageFolder,
+    "mnist_dcgan_dp_20a_1000000.0e": ImageFolder,
+    "mnist_dcgan_dp_20a_200000.0e": ImageFolder,
 }
 
-# DATASETS AND DIMENSIONS TESTED
+# DEFAULT DATASETS AND DIMENSIONS TESTED
 IMAGE_DIMS = {
     "imagenet": 32,  # 224
     "imagenette": 28,  # 224
@@ -147,6 +147,7 @@ def get_hybrid_dataloaders(
     synthetic_portion: float = 0.5,
     num_workers: int = 2,
     data_directory: os.PathLike = None,
+    seed: int = None,
 ) -> (torch.utils.data.DataLoader, torch.utils.data.DataLoader):
     """Helper method for datasets.load
     run:
@@ -162,6 +163,7 @@ def get_hybrid_dataloaders(
         "synthetic_portion": synthetic_portion,
         "num_workers": num_workers,
         "data_directory": data_directory,
+        "seed": seed,
     }
 
     return Dataset.create_hybrid_dataloaders(**kwargs)
@@ -251,7 +253,8 @@ class Dataset(object):
                 transform=train_transforms,
             )
             test_dataset = ImageFolder(
-                root=f"{data_directory}/{dataset_name}/val/", transform=test_transforms,
+                root=f"{data_directory}/{dataset_name}/val/",
+                transform=test_transforms,
             )
 
         else:
@@ -429,7 +432,9 @@ class Dataset(object):
 
         elif (original_portion > 0.0) and (original_portion < 1):
             train_original, _ = self._split_dataset(
-                train_original, split=original_portion, seed=seed,
+                train_original,
+                split=original_portion,
+                seed=seed,
             )
             log.info(
                 f" > Splitted original '{self.dataset_name}' dataset with "
@@ -472,7 +477,9 @@ class Dataset(object):
         elif (synthetic_portion > 0.0) and (synthetic_portion < 1.0):
             # step 2. get the synthetic train dataset and dump some of it
             train_synthetic, _ = self._split_dataset(
-                train_synthetic, split=synthetic_portion, seed=seed,
+                train_synthetic,
+                split=synthetic_portion,
+                seed=seed,
             )
 
             log.info(
@@ -562,15 +569,16 @@ class Dataset(object):
         # NOTE: num_samples <= label_counts[class_idx] -- MUST
         num_samples = label_counts[class_idx] if num_samples == "all" else num_samples
         sampler = WeightedRandomSampler(
-            weights=sample_weights, num_samples=int(num_samples), replacement=True,
+            weights=sample_weights,
+            num_samples=int(num_samples),
+            replacement=True,
         )
         return sampler
 
     def _split_dataset(
         dataset: torchvision.datasets, split: float = 0.5, seed: int = None
     ):
-        """Helper. Split dataset
-        """
+        """Helper. Split dataset"""
         idxs_1, idxs_2 = train_test_split(
             list(range(len(dataset))), train_size=split, random_state=seed
         )
