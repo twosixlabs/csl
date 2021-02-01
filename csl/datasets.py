@@ -54,8 +54,8 @@ from sklearn.model_selection import train_test_split
 log = logging.getLogger(__name__)
 coloredlogs.install(level="info", logger=log)
 
-DATA_DIR = "~/Documents/twosix/datasets"
-# DATA_DIR = "/persist/datasets"
+# DATA_DIR = "~/Documents/twosix/datasets"
+DATA_DIR = "/persist/datasets"
 
 # supported datasets
 DATASETS = {
@@ -64,7 +64,7 @@ DATASETS = {
     "imagenet": ImageFolder,
     "imagenette": ImageFolder,
     "mnist": MNIST,
-    "stl10": STL10,
+    # "stl10": STL10,
     # synthetic datasets
     "cifar10_vae": ImageFolder,
     "cifar10_cvae": ImageFolder,
@@ -74,16 +74,24 @@ DATASETS = {
     "mnist_cvae": ImageFolder,
     # PENDING:
     # "fashion-mnist_cvae": ImageFolder,
-    # "fashion-mnist_dcgan": ImageFolder,
+    "fashion-mnist_dcgan": ImageFolder,
     # imagenet_vae: ImageFolder,
     # imagenet_cvae: ImageFolder,
-    # imagenet_dcgan: ImageFolder,
+    "imagenet_dcgan": ImageFolder,
     # imagenette_vae: ImageFolder,
     # imagenette_cvae: ImageFolder,
-    # imagenette_dcgan: ImageFolder,
     "mnist_dcgan": ImageFolder,
     "mnist_dcgan_dp_20a_1000000.0e": ImageFolder,
     "mnist_dcgan_dp_20a_200000.0e": ImageFolder,
+    "mnist_dcgan_dp_20a_100000.0e": ImageFolder,
+    "mnist_dcgan_dp_20a_10000.0e": ImageFolder,
+    "mnist_dcgan_dp_20a_1000.0e": ImageFolder,
+    # fashion
+    "fashion-mnist_dcgan_dp_20a_1000000.0e": ImageFolder,
+    "fashion-mnist_dcgan_dp_20a_200000.0e": ImageFolder,
+    "fashion-mnist_dcgan_dp_20a_100000.0e": ImageFolder,
+    "fashion-mnist_dcgan_dp_20a_10000.0e": ImageFolder,
+    "fashion-mnist_dcgan_dp_20a_1000.0e": ImageFolder,
 }
 
 # DEFAULT DATASETS AND DIMENSIONS TESTED
