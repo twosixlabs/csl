@@ -42,7 +42,7 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class VariationalAutoEncoder(nn.Module):
-    """Prototype."""
+    """ Prototype."""
 
     def __init__(self):
         super(VariationalAutoEncoder, self).__init__()
@@ -131,11 +131,11 @@ class VAE_ARCHITECTURE(nn.Module):
         # import pdb; pdb.set_trace()
         if seed is not None:
             torch.manual_seed(seed)
-        sample = torch.randn(n_samples * n_channels, self.z_dim)
+        sample_arr = torch.randn(n_samples * n_channels, self.z_dim)
         if self.cuda():
-            sample = (sample.cuda() + 1) / 2
-        sample = self.decode(sample).cpu()
-        return sample
+            sample_arr = (sample_arr.cuda() + 1) / 2
+        sample_arr = self.decode(sample_arr).cpu()
+        return sample_arr
 
     def loss_function(self, recon_x, x, mu, log_var, eta=0.1) -> float:
         """
@@ -306,6 +306,34 @@ class CVAE_ARCHITECTURE(nn.Module):
         log.info(f"Generated {image_counter} samples")
 
 
+def compute_immediate_sensitivity(model, inp, loss) -> list:
+    """Core. Computes immediate sensitivity"""
+    cpu_loss = loss
+
+    # (1) first-order gradient (wrt parameters)
+    first_order_grads = torch.autograd.grad(
+        cpu_loss,
+        model.parameters(),
+        retain_graph=True,
+        create_graph=True,
+        # allow_unused=True
+    )
+
+    # (2) L2 norm of the gradient from (1)
+    grad_l2_norm = torch.norm(torch.cat([x.view(-1) for x in first_order_grads]), p=2)
+
+    # (3) Gradient (wrt inputs) of the L2 norm of the gradient from (2)
+    sensitivity_vec = torch.autograd.grad(grad_l2_norm, inp, retain_graph=True)[0]
+
+    # (4) L2 norm of (3) - "immediate sensitivity"
+    # sensitivity = [torch.norm(v, p=2).item() for v in sensitivity_vec]
+    sensitivity = torch.norm(
+        sensitivity_vec.view(sensitivity_vec.shape[0], -1), p=2, dim=1
+    )
+
+    return sensitivity
+
+
 class VAE(object):
     """Object.
     wraps around VAE_ARCHITECTURE to enable convenient training, testing, and
@@ -319,8 +347,15 @@ class VAE(object):
         self.fidelity = fidelity  # range: (0.0, 1.0]
         self.z_dim = z_dim
         # self._set_vae()
+        self.mean_epoch_sensitivities = []
+        self.max_epoch_sigmas = []
+        self.mean_epoch_sigmas = []
+        self.max_epoch_sensitivities = []
 
     def _train_one_epoch(self, epoch, train_loader):
+
+        self.batch_sensitivities = []
+        self.batch_sigmas = []
 
         # set to train mode (enable grad)
         self.model.train()
@@ -330,24 +365,49 @@ class VAE(object):
             tqdm(range(ttotal), desc=f"Train Batch {epoch}"),
             train_loader,
         ):
-            # for batch_idx, (data, _) in enumerate(train_loader):
-            data = data.to(DEVICE)
             self.optimizer.zero_grad()
+            # step 1. Prepare data
+            data = data.to(DEVICE)
+            inp = torch.clone(data).to(DEVICE)
+            inp = Variable(inp, requires_grad=True)
 
-            recon_batch, mu, log_var = self.model(data)
+            # sterp 2. compute loss
+            recon_batch, mu, log_var = self.model.forward(inp)
             loss = self.model.loss_function(recon_batch, data, mu, log_var)
+
+            if self.enable_dp_training:
+                # step 3. call sensitivity computation
+                batch_sensitivities = compute_immediate_sensitivity(
+                    self.model, inp, loss
+                )
+                batch_sensitivity = torch.max(batch_sensitivities) / len(data)
+                self.batch_sensitivities.append(batch_sensitivity.item())
             loss.backward()
+
+            if self.enable_dp_training:
+                # step 4. compute noise
+                # this is the scale of the Gaussian noise to be added to the batch gradient
+                sigma = torch.sqrt(
+                    (batch_sensitivity ** 2 * self.alpha) / (2 * self.epsilon_iter)
+                )
+                self.batch_sigmas.append(sigma.item())
+
             x = loss.item()
             if np.isnan(x):
                 log.debug(
                     f"Epoch (before adj): {epoch}; batch_idx: {batch_idx} loss: {loss}"
                 )
-                # x = torch.where(torch.isnan(x), torch.zeros_like(x), x)
                 x = 0
                 log.debug(
                     f"    epoch (adfter adj): {epoch}; batch_idx: {batch_idx} loss: {loss}"
                 )
             train_loss += x
+
+            if self.enable_dp_training:
+                # step 5. update gradients with computed sensitivities
+                with torch.no_grad():
+                    for p in self.model.parameters():
+                        p.grad += sigma * torch.randn(1).to(DEVICE)
 
             self.optimizer.step()
 
@@ -358,6 +418,19 @@ class VAE(object):
                     f"({100. * batch_idx / len(train_loader):.0f}%)]"
                     f"\t loss: {loss.item() / len(data):.6f}"
                 )
+
+        # tracking variables:
+        if self.enable_dp_training:
+            self.max_epoch_sensitivities.append(np.max(self.batch_sensitivities))
+            self.mean_epoch_sensitivities.append(np.mean(self.batch_sensitivities))
+            self.max_epoch_sigmas.append(np.max(self.batch_sigmas))
+            self.mean_epoch_sigmas.append(np.mean(self.batch_sigmas))
+            log.info(
+                f" Epoch sensitivity and sigma values for {epoch}-epoch: \n"
+                f"\t - Sensitivity: Max = {self.max_epoch_sensitivities[-1]:.4f} || Mean = {self.mean_epoch_sensitivities[-1]:.4f}\n"
+                f"\t - Sigmas: Max = {self.max_epoch_sigmas[-1]:.4f} || Mean = {self.mean_epoch_sigmas[-1]:.4f}"
+            )
+
         epoch_loss = train_loss / len(train_loader.dataset)
         log.info(f"====> Epoch: {epoch} Average Train loss: {epoch_loss: .4f}")
         return epoch_loss
@@ -371,6 +444,7 @@ class VAE(object):
         test_loss = 0
         with torch.no_grad():
             for data, _ in test_loader:
+                # data = data.cuda()
                 data = data.cuda()
                 recon, mu, log_var = self.model(data)
 
@@ -387,10 +461,25 @@ class VAE(object):
             x_dim=self.x_dim, h_dim1=self.h_dim1, h_dim2=self.h_dim2, z_dim=self.z_dim
         )
 
-    def train(self, train_loader, test_loader, num_epochs: int = 3):
+    def train(
+        self,
+        train_loader,
+        test_loader,
+        num_epochs: int = 3,
+        alpha: float = None,
+        epsilon: float = None,
+    ):
         """Convenience.
         Training loop that runs and produces a trained model.
         """
+        # providing values for alpha and epsilon enables dp_training
+        # privacy parameters for Renyi differential privacy
+        self.alpha = alpha
+        self.epsilon = epsilon
+        self.enable_dp_training = (
+            True if (alpha is not None) and (epsilon is not None) else False
+        )
+
         # training epochs
         self.num_epochs = num_epochs
         # Learning rate for optimizers
@@ -405,6 +494,9 @@ class VAE(object):
         self.h = batch.shape[3]
         self.x_dim = self.w * self.h
         self.z_dim = int(self.x_dim * self.fidelity)
+
+        if self.enable_dp_training:
+            self.epsilon_iter = self.epsilon / self.num_epochs
 
         # setup the model
         self._set_model()
@@ -493,6 +585,7 @@ class VAE(object):
             "w": self.w,
         }
 
+        # self.model_path = f"{model_path}vae_{self.z_dim}components_BEST.pth"
         self.model_path = f"{model_path}vae_BEST.pth"
 
         torch.save(
@@ -523,12 +616,20 @@ class VAE(object):
 
         # set the modelarchitecture
         self._set_model()
+        self.model.load_state_dict(checkpoint["model_state_dict"])
 
         return self
 
     def generate_images(
         self, num_samples: int, save_directory: os.PathLike, seed: int = MANUAL_SEED
     ):
+        """
+        # confirm to ImageFolder structure:
+        save_directory = f"/data/{SYNTHESIZER_NAME}/{DATASET_NAME}/{DATA_SRC}/{class_idx}/"
+        example:
+        save_directory = f"/data/mnist_vae/train/0/"
+        save_directory = f"/data/mnist_vae/val/0/"
+        """
         with torch.no_grad():
             samples = self.model.sample(num_samples, self.nc, seed=seed)
         tensor_image = samples.view(-1, self.nc, self.h, self.w).cpu()
@@ -543,6 +644,7 @@ def init_xavier(m):
     """xavier weight initialization"""
     if type(m) == nn.Linear:
         nn.init.xavier_uniform(m.weight)
+        # TODO: evealuate this effect
         m.bias.data.fill_(0.01)
 
 
@@ -615,7 +717,7 @@ class CVAE(VAE):
         Loads the model and its parameters.
         """
         # load the checkpoint
-        self.model_path = f"{model_path}vae_BEST.pth"
+        self.model_path = f"{model_path}cvae_BEST.pth"
         checkpoint = torch.load(self.model_path)
         # extract model specific  args
         kwargs = checkpoint["net_args"]
@@ -630,6 +732,7 @@ class CVAE(VAE):
 
         # set the modelarchitecture
         self._set_model()
+        self.model.load_state_dict(checkpoint["model_state_dict"])
 
         return self
 
