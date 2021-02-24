@@ -16,24 +16,20 @@ def merlin(model, inputs, labels, lf):
     T = 100
     loss_function = lf(reduction='none')
     inp = Variable(inputs, requires_grad=True)
+    inp = inp.to(torch.cuda.current_device())
     outputs = model.forward(inp)
+    labels = labels.to(torch.cuda.current_device())
     loss = loss_function(torch.squeeze(outputs), torch.squeeze(labels))
-
-    # probably a better way to create a bytetensor of zeros, but this works
-    counts = torch.zeros(len(loss))
+    counts = torch.zeros(len(loss)).to(torch.cuda.current_device())
 
     for i in range(T):
-        noisy_inputs = inputs + (sigma * torch.randn(1).float())
-
-        noisy_inp = Variable(noisy_inputs, requires_grad=True)
+        noisy_inp = inp + (sigma * torch.randn(1, device=torch.cuda.current_device()))
 
         noisy_outputs = model.forward(noisy_inp)
-
         noisy_loss = loss_function(torch.squeeze(noisy_outputs), torch.squeeze(labels))
-
         gt = noisy_loss > loss
         counts += gt
-    return counts, [float(l) for l in loss]
+    return counts.cpu(), [float(l) for l in loss.cpu()]
 
 
 def run_merlin(model, thresh, X_target, y_target, lf=nn.MSELoss):
@@ -43,17 +39,27 @@ def run_merlin(model, thresh, X_target, y_target, lf=nn.MSELoss):
     pass_inf = counts > thresh
     return sum(pass_inf) / len(pass_inf)
 
-def merlin_optimal_thresh(model, train_loader, test_loader, lf=nn.MSELoss):
-    train_counts = np.zeros(len(train_loader.dataset))
-    test_counts = np.zeros(len(test_loader.dataset))
+def merlin_optimal_thresh(model, train_loader, test_loader, lf=nn.MSELoss, num_batches=None):
     train_bs = train_loader.batch_size
     test_bs = test_loader.batch_size
+    
+    if num_batches is None:
+        train_counts = np.zeros(len(train_loader.dataset))
+        test_counts = np.zeros(len(test_loader.dataset))
+    else:
+        train_counts = np.zeros(train_bs * num_batches)
+        test_counts = np.zeros(test_bs * num_batches)
+
     for i, (inputs, labels) in enumerate(train_loader):
+        if num_batches is not None and i >= num_batches:
+            break
         idx = i * train_bs
         counts, _ = merlin(model, inputs, labels, lf)
         train_counts[idx : (idx + len(labels))] = counts
     
     for i, (inputs, labels) in enumerate(test_loader):
+        if num_batches is not None and i >= num_batches:
+            break
         idx = i * test_bs
         counts, _ = merlin(model, inputs, labels, lf)
         test_counts[idx : (idx + len(labels))] = counts
@@ -80,6 +86,8 @@ def run_merlin_loader(model, thresh, loader, lf=nn.MSELoss):
     return sum(ratios)/len(ratios)
 
 
+
+
 def gaussian_pdf(sd, x):
     if sd <= 0:
         raise ValueError('standard deviation must be positive but is {}'.format(sd))
@@ -89,8 +97,9 @@ def gaussian_pdf(sd, x):
 
 def membership_inf(model, avg_train_loss, inputs, labels, lf=nn.MSELoss):
     inp = Variable(inputs, requires_grad=True)
-
+    inp = inp.to(torch.cuda.current_device())
     outputs = model.forward(inp)
+    labels = labels.to(torch.cuda.current_device())
     loss = lf(reduction='none')(torch.squeeze(outputs), labels)
     pass_inf = [1 if abs(l) < avg_train_loss else 0 for l in loss]
 
@@ -98,11 +107,11 @@ def membership_inf(model, avg_train_loss, inputs, labels, lf=nn.MSELoss):
 
 
 def run_membership_inference_attack(model, avg_train_l, X_target, y_target, lf=nn.MSELoss):
-    _, sensitivities = grad_immediate_sensitivity(model,
-                                                      lf(),
-                                                      torch.from_numpy(X_target).float(),
-                                                      torch.from_numpy(y_target).float(),
-                                                      None)
+    if type(X_target) == np.ndarray:
+        X_target = torch.from_numpy(X_target).float()
+    if type(y_target) == np.ndarray:
+        y_target = torch.from_numpy(y_target).float()
+    _, sensitivities = grad_immediate_sensitivity(model, lf(), X_target, y_target, None)
     max_sen = max(sensitivities)
     norm_sen = [s/max_sen for s in sensitivities]
     min_exp = min([np.log(s) for s in sensitivities if s != 0])
@@ -111,8 +120,17 @@ def run_membership_inference_attack(model, avg_train_l, X_target, y_target, lf=n
 
     pass_inf, train_loss = membership_inf(model,
                                           avg_train_l,
-                                          torch.from_numpy(X_target).float(),
-                                          torch.from_numpy(y_target).float(), lf)
+                                          X_target,
+                                          y_target, lf)
     #plt.scatter(paws, pass_inf)
     #print('positive ratio:',sum(pass_inf)/len(pass_inf))
     return sum(pass_inf)/len(pass_inf)
+
+def run_yeom_loader(model, avg_train_l, loader, lf=nn.MSELoss, num_batches=None):
+    ratios = []
+    for i, (inputs, labels) in enumerate(loader):
+        if (num_batches is not None) and i >= num_batches:
+            break
+        ratios.append(run_membership_inference_attack(model, avg_train_l, inputs, labels, lf))
+
+    return sum(ratios)/len(ratios)

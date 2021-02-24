@@ -43,8 +43,9 @@ def clipped_autograd(model, C):
 
 def grad_immediate_sensitivity(model, criterion, inputs, labels, epoch):
     inp = Variable(inputs, requires_grad=True)
-
+    inp = inp.to(torch.cuda.current_device())
     outputs = model.forward(inp)
+    labels = labels.to(torch.cuda.current_device())
     loss = criterion(torch.squeeze(outputs), torch.squeeze(labels))
 
     # (1) first-order gradient (wrt parameters)
@@ -57,7 +58,7 @@ def grad_immediate_sensitivity(model, criterion, inputs, labels, epoch):
     sensitivity_vec = torch.autograd.grad(grad_l2_norm, inp, retain_graph=True)[0]
 
     # (4) L2 norm of (3) - "immediate sensitivity"
-    s = [torch.norm(v, p=2).numpy().item() for v in sensitivity_vec]
+    s = [torch.norm(v, p=2).cpu().numpy().item() for v in sensitivity_vec]
 
     '''
     if epoch > 5:
