@@ -111,12 +111,6 @@ def run_membership_inference_attack(model, avg_train_l, X_target, y_target, lf=n
         X_target = torch.from_numpy(X_target).float()
     if type(y_target) == np.ndarray:
         y_target = torch.from_numpy(y_target).float()
-    _, sensitivities = grad_immediate_sensitivity(model, lf(), X_target, y_target, None)
-    max_sen = max(sensitivities)
-    norm_sen = [s/max_sen for s in sensitivities]
-    min_exp = min([np.log(s) for s in sensitivities if s != 0])
-    log_sen = [np.log(s) if s !=0 else min_exp - 1 for s in sensitivities]
-    paws = [s - (min_exp - 1) for s in log_sen]
 
     pass_inf, train_loss = membership_inf(model,
                                           avg_train_l,

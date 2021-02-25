@@ -60,17 +60,6 @@ def grad_immediate_sensitivity(model, criterion, inputs, labels, epoch):
     # (4) L2 norm of (3) - "immediate sensitivity"
     s = [torch.norm(v, p=2).cpu().numpy().item() for v in sensitivity_vec]
 
-    '''
-    if epoch > 5:
-        print(f"inputs: ",inp)
-        print(f"outputs: ", outputs)
-        print(f"loss: ", loss)
-        print(f"first_order_grads: ", first_order_grads)
-        print(f"grad_l2_norm:: ", grad_l2_norm)
-        print(f"sensitivity_vec: ", sensitivity_vec)
-        print(f"sensitivies: ", s)
-    '''
-
     loss.backward()
     return loss, s
 
