@@ -120,7 +120,7 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
     return info, model
 
 
-def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2 epochs=10, add_noise=False, batch_size=32, lf=nn.NLLLoss, print_rate=1):
+def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, epochs=10, add_noise=False, batch_size=32, lf=nn.NLLLoss, print_rate=1):
     if epsilon==0:
         add_noise=False
     # reset the model
