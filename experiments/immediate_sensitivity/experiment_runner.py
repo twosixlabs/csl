@@ -3,11 +3,11 @@ import membership_inference as mi
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
+from torch.autograd import Variable
 import torch.optim as optim
 from collections import defaultdict
 import numpy as np
-from autograd_hacks import *
-
+import autograd_hacks
 
 def loader_accuracy(model, test_loader, lf=nn.NLLLoss()):
     correct = 0
@@ -120,7 +120,7 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
     return info, model
 
 
-def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2 epochs=10, add_noise=False, batch_size=32, lf=nn.NLLLoss, print_rate=1):
+def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, epochs=10, add_noise=False, batch_size=32, lf=nn.NLLLoss, print_rate=1):
     if epsilon==0:
         add_noise=False
     # reset the model
@@ -129,7 +129,7 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2 epo
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, drop_last=True)
     model_criterion = lf() 
     model_optimizer = optim.Adam(model.parameters(),lr=0.001)
-    autograd_acks.add_hooks(model)
+    autograd_hacks.add_hooks(model)
     
     epsilon_iter = epsilon / epochs
 
@@ -137,6 +137,7 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2 epo
     train_accs = []
     test_accs = []
     advs = []
+
     
     train_losses = []
     
@@ -152,8 +153,8 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2 epo
             loss = model_criterion(outputs, y_batch_train)
             loss.backward()
             autograd_hacks.compute_grad1(model)
-            clipper, mn = clipped_autograd(model, C)
-            max_norms.append(mn)
+            clipper, mn = isp.clipped_autograd(model, C)
+            info['max_norms'].append(mn)
             autograd_hacks.clear_backprops(model)
             train_losses.append(loss) 
             

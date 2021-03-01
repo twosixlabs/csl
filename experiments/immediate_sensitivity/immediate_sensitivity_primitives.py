@@ -34,8 +34,8 @@ def clipped_autograd(model, C):
         torch.equal(norms, param.grad1.norm(dim=d))
         max_norms.append(torch.max(norms))
         c_norms = C / norms
-
-        clips_with_ones = torch.minimum(c_norms, torch.ones(c_norms.shape))
+	
+        clips_with_ones = torch.minimum(c_norms, torch.ones(c_norms.shape, device=torch.cuda.current_device()))
         clipped_grads.append(torch.matmul(t, clips_with_ones))
 
     return clipped_grads, max(max_norms)
