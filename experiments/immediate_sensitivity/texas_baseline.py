@@ -33,17 +33,17 @@ class Texas_Classifier(nn.Module):
 print("test 3")
     
     
-batch_sizes = [16, 32, 64]
-epsilons = [0, 1000, 1000, 10000, 50000, 100000]
+batch_sizes = [32, 64]
+epsilons = [1000, 10000, 50000, 100000]
 #epsilons = [0, 1, 100, 1000, 10000, 50000, 100000]
-clips  = [2, 5, 10, 50]
+clips  = [.5, 1, 2, 5]
 
 for b in batch_sizes:
     for e in epsilons:
         for t in clips:
             print(f"model: {e}, {t}, {b} begin")
             model = Texas_Classifier()
-            info, mode = er.baseline_experiment(model,
+            mode, info = er.baseline_experiment(model,
                                                texas_train,
                                                texas_test,
                                                epsilon=e,
@@ -54,4 +54,4 @@ for b in batch_sizes:
                                                batch_size=b,
                                                lf=torch.nn.NLLLoss,
                                                print_rate=1)
-            pickle.dump(info, open(f"../../data/texas_baseline_{e}_{t}_{b}.b", 'wb'))
+            pickle.dump(info, open(f"../../data/texas_b_{e}_{t}_{b}.b", 'wb'))
