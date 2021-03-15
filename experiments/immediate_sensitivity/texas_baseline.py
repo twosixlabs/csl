@@ -43,7 +43,7 @@ for b in batch_sizes:
         for t in clips:
             print(f"model: {e}, {t}, {b} begin")
             model = Texas_Classifier()
-            mode, info = er.baseline_experiment(model,
+            info, model = er.baseline_experiment(model,
                                                texas_train,
                                                texas_test,
                                                epsilon=e,
