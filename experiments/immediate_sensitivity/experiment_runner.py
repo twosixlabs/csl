@@ -106,12 +106,16 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
         tpr = mi.run_yeom_loader(model, avg_train_l, train_loader, lf=lf)
         fpr = mi.run_yeom_loader(model, avg_train_l, test_loader, lf=lf)
         adv = tpr-fpr
+        
+        madv, mopt_round, mtpr, mfpr = mi.merlin_optimal_thresh(model, train_loader, test_loader, lf=lf, num_batches=20, tpr=True)
 
         info['train_l'].append(avg_train_l.item())
         info['test_l'].append(avg_test_l.item())
-        info['adv'].append(adv)
-        info['acc'] = avg_test_acc
-        info['merlin_adv'].append(mi.merlin_optimal_thresh(model, train_loader, test_loader, lf=lf, num_batches=20))
+        info['yeom_tpr'].append(tpr)
+        info['yeom_fpr'].appned(fpr)
+        info['acc'].append(avg_test_acc)
+        info['merlin_tpr'].append(mtpr)
+        info['merlin_fpr'].append(mtpr)
         
         if epoch % print_rate == 0:
             acc = avg_test_acc
@@ -175,11 +179,15 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, ep
         fpr = mi.run_yeom_loader(model, avg_train_l, test_loader, lf=lf)
         adv = tpr-fpr
 
+        madv, mopt_round, mtpr, mfpr = mi.merlin_optimal_thresh(model, train_loader, test_loader, lf=lf, num_batches=20, tpr=True)
+
         info['train_l'].append(avg_train_l.item())
         info['test_l'].append(avg_test_l.item())
-        info['adv'].append(adv)
-        info['acc'] = avg_test_acc
-        info['merlin_adv'].append(mi.merlin_optimal_thresh(model, train_loader, test_loader, lf=lf, num_batches=20))
+        info['yeom_tpr'].append(tpr)
+        info['yeom_fpr'].appned(fpr)
+        info['acc'].append(avg_test_acc)
+        info['merlin_tpr'].append(mtpr)
+        info['merlin_fpr'].append(mtpr)
         
         if epoch % print_rate == 0:
             acc = avg_test_acc

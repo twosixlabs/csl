@@ -39,7 +39,7 @@ def run_merlin(model, thresh, X_target, y_target, lf=nn.MSELoss):
     pass_inf = counts > thresh
     return sum(pass_inf) / len(pass_inf)
 
-def merlin_optimal_thresh(model, train_loader, test_loader, lf=nn.MSELoss, num_batches=None):
+def merlin_optimal_thresh(model, train_loader, test_loader, lf=nn.MSELoss, num_batches=None, tpr = false):
     train_bs = train_loader.batch_size
     test_bs = test_loader.batch_size
     
@@ -66,6 +66,8 @@ def merlin_optimal_thresh(model, train_loader, test_loader, lf=nn.MSELoss, num_b
     
     max_thresh = 0
     max_adv = 0
+    mtpr = 0
+    mpfr = 0
     for i in range(0, 100):
         train_pos = train_counts > i
         test_pos = test_counts > i
@@ -75,6 +77,10 @@ def merlin_optimal_thresh(model, train_loader, test_loader, lf=nn.MSELoss, num_b
         if adv > max_adv:
             max_thresh = i
             max_adv = adv
+            mtpr = train_rat
+            mfpr = test_rat
+    if tpr:
+        return max_adv, max_thresh, mtpr, mfpr
     return max_adv, max_thresh
     
     
