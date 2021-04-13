@@ -123,9 +123,9 @@ textdistance==4.2.0
 threadpoolctl==2.1.0
 three-merge==0.1.1
 toml==0.10.1
-torch==1.6.0+cu101
+#torch==1.6.0+cu101
 torchgan==0.0.5
-torchvision==0.7.0+cu101
+#torchvision==0.7.0+cu101
 tornado==6.0.4
 tqdm==4.49.0
 traitlets==4.3.3

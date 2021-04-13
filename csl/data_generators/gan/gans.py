@@ -135,7 +135,7 @@ class DCGAN_ARCHITECTURE:
         self.ngpu = ngpu
 
         # Size of z latent vector (i.e. size of generator input)
-        self.nz = 100
+        self.nz = nz
         # Size of feature maps in generator
         self.ngf = 64
         # Size of feature maps in discriminator
@@ -216,8 +216,8 @@ class DCGAN(object):
     def __init__(self, ngpu: int = 1):
         self.nc = None
         self.ngpu = 1
-        self.lr = 2e-4
-        self.nz = 100
+        self.lr = 1e-4
+        self.nz = 256
 
         self.mean_epoch_sensitivities = []
         self.max_epoch_sigmas = []

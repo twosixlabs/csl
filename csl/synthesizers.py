@@ -20,10 +20,10 @@ import argparse
 # torch
 import torch
 from torchvision import transforms
-from data_generators.vae import vaes
-from data_generators.gan import gans
-import datasets as dsets
-from utils.utils import confirm_directory
+from csl.data_generators.vae import vaes
+from csl.data_generators.gan import gans
+from csl import datasets as dsets
+from csl.utils.utils import confirm_directory
 
 # storage
 MODELS_DIR = "models"
