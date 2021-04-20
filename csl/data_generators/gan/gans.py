@@ -224,6 +224,7 @@ class DCGAN(object):
         self.mean_epoch_sigmas = []
         self.max_epoch_sensitivities = []
         self.enable_dp_training = False
+        self.enable_throw_out = False
 
     def _set_model(self):
         """Instantiates the main model architecture"""
@@ -380,6 +381,7 @@ class DCGAN(object):
         num_epochs: int = 3,
         alpha: float = None,
         epsilon: float = None,
+        throw_out_threshold: float = None
     ):
         """Convenience. Trains the model's generator and discriminator."""
         # providing values for alpha and epsilon enables dp_training
@@ -387,6 +389,9 @@ class DCGAN(object):
         self.epsilon = epsilon
         self.enable_dp_training = (
             True if (alpha is not None) and (epsilon is not None) else False
+        )
+        self.enable_throw_out = (
+            True if throw_out_threshold is not None else False
         )
 
         batch, labels = iter(train_loader).next()
@@ -498,6 +503,7 @@ class DCGAN(object):
             "dp_enable": self.enable_dp_training,
             "alpha": self.alpha,
             "epsilon": self.epsilon,
+            "throw_out_threshold": self.throw_out_threshold
         }
 
         # The Generator
@@ -541,7 +547,8 @@ class DCGAN(object):
         self.nz = argsG["nz"]
         self.enable_dp_training = argsG["dp_enable"]
         self.alpha = argsG["alpha"]
-        self.alpha = argsG["epsilon"]
+        self.epsilon = argsG["epsilon"]
+        self.throw_out_threshold = argsG["throw_out_threshold"]
         # set the modelarchitecture
         self._set_model()
         # # set the generator and dsicriminator architectures
