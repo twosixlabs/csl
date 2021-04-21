@@ -55,6 +55,7 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
     for epoch in range(epochs):
         train_losses = []
         for x_batch_train, y_batch_train in train_loader:
+            torch.cuda.empty_cache()
             plz_update = True
 
             model_optimizer.zero_grad()
