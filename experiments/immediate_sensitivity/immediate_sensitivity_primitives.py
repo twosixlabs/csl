@@ -60,7 +60,34 @@ def grad_immediate_sensitivity(model, criterion, inputs, labels, epoch):
     # (4) L2 norm of (3) - "immediate sensitivity"
     s = [torch.norm(v, p=2).cpu().numpy().item() for v in sensitivity_vec]
 
-    loss.backward()
+    return loss, s
+
+def per_param_immediate_sensitivity(model, criterion, inputs, labels, epoch):
+    inp = Variable(inputs, requires_grad=True)
+    inp = inp.to(torch.cuda.current_device())
+    outputs = model.forward(inp)
+    labels = labels.to(torch.cuda.current_device())
+    loss = criterion(torch.squeeze(outputs), torch.squeeze(labels))
+
+    # (1) first-order gradient (wrt parameters)
+    first_order_grads = torch.autograd.grad(loss, model.parameters(), retain_graph=True, create_graph=True)
+
+    # (2) L2 norm of the gradient from (1)
+    print([f.shape for f in first_order_grads])
+    grad_l2_norm = torch.norm(torch.cat([x.view(-1) for x in first_order_grads]), p=2)
+
+    # (3) Gradient (wrt inputs) of the L2 norm of the gradient from (2)
+    shaped_grads = torch.cat([x.view(-1) for x in first_order_grads])
+    print(shaped_grads.shape)
+    print(grad_l2_norm.shape)
+    print(inp.shape)
+    sensitivity_vec = [torch.autograd.grad(g, inp, retain_graph=True)[0] for g in shaped_grads]
+    print(sensitivity_vec.size())
+
+    # (4) L2 norm of (3) - "immediate sensitivity"
+    s = [torch.norm(v, p=2).cpu().numpy().item() for v in sensitivity_vec]
+    print(len(s), s[0].shape())
+
     return loss, s
 
 

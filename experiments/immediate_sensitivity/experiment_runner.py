@@ -34,7 +34,7 @@ def loader_accuracy(model, test_loader, lf=nn.NLLLoss()):
     
     return acc, loss
 
-def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, add_noise=False, throw_out_threshold=False, batch_size=32, lf=nn.NLLLoss, print_rate=1):
+def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, add_noise=False, throw_out_threshold=False, throw_out_std=0, batch_size=32, lf=nn.NLLLoss, print_rate=1):
     if epsilon==0:
         add_noise=False
     # reset the model
@@ -53,22 +53,30 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
     train_losses = []
     
     for epoch in range(epochs):
+        train_losses = []
         for x_batch_train, y_batch_train in train_loader:
             plz_update = True
-            train_losses = []
 
             model_optimizer.zero_grad()
             loss, batch_sensitivities = isp.grad_immediate_sensitivity(model, model_criterion, x_batch_train, y_batch_train, epoch)
             batch_sensitivity = np.max(batch_sensitivities) / batch_size
-            
+            ms = np.mean(batch_sensitivities)
+            std = np.std(batch_sensitivities)
+            info['mean_sen'].append(ms) 
+            info['min_sen'].append(np.min(batch_sensitivities)) 
+            info['max_sen'].append(np.max(batch_sensitivities)) 
+            info['median_sen'].append(np.median(batch_sensitivities)) 
+            info['std_sen'].append(std) 
             train_losses.append(loss)
-            if throw_out_threshold:
+            if throw_out_threshold or throw_out_std:
                 # delete gradients?
                 #with torch.no_grad():
                 #    for p in model.parameters():
                 #        p.grad = None
 
                 # throw out "bad" examples
+                if throw_out_std:
+                    throw_out_threshold = ms + (throw_out_std * std)
                 good_idxs = np.array(batch_sensitivities) < throw_out_threshold
                 #print(len(x_batch_train[good_idxs]), 'out of', len(x_batch_train))
 
@@ -85,11 +93,14 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
                     loss = model_criterion(torch.squeeze(outputs), good_ys)
 
                     loss.backward()
-                
-                batch_sensitivity = min(throw_out_threshold, batch_sensitivity)
+               	    throw_out_bs = np.max(np.array(batch_sensitivities)[good_idxs]) 
+                    avg_sen = throw_out_bs / len(good_xs)
+                    batch_sensitivity = min(avg_sen, batch_sensitivity)
+            else:
+                loss.backward()
 
 
-            if add_noise:
+            if plz_update and add_noise:
                 sigma = np.sqrt((batch_sensitivity**2 * alpha) / (2 * epsilon_iter))
                 with torch.no_grad():
                     for p in model.parameters():
@@ -112,10 +123,10 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
         info['train_l'].append(avg_train_l.item())
         info['test_l'].append(avg_test_l.item())
         info['yeom_tpr'].append(tpr)
-        info['yeom_fpr'].appned(fpr)
+        info['yeom_fpr'].append(fpr)
         info['acc'].append(avg_test_acc)
         info['merlin_tpr'].append(mtpr)
-        info['merlin_fpr'].append(mtpr)
+        info['merlin_fpr'].append(mfpr)
         
         if epoch % print_rate == 0:
             acc = avg_test_acc
@@ -158,7 +169,7 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, ep
             loss.backward()
             autograd_hacks.compute_grad1(model)
             clipper, mn = isp.clipped_autograd(model, C)
-            info['max_norms'].append(mn)
+            #info['max_norms'].append(mn)
             autograd_hacks.clear_backprops(model)
             train_losses.append(loss) 
             
@@ -184,10 +195,10 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, ep
         info['train_l'].append(avg_train_l.item())
         info['test_l'].append(avg_test_l.item())
         info['yeom_tpr'].append(tpr)
-        info['yeom_fpr'].appned(fpr)
+        info['yeom_fpr'].append(fpr)
         info['acc'].append(avg_test_acc)
         info['merlin_tpr'].append(mtpr)
-        info['merlin_fpr'].append(mtpr)
+        info['merlin_fpr'].append(mfpr)
         
         if epoch % print_rate == 0:
             acc = avg_test_acc

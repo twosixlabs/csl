@@ -52,23 +52,23 @@ class Classifier(nn.Module):
 print("test 3")
     
     
-epsilons = [1 , 10, 100, 1000, 5000, 10000,  50000, 100000]
+epsilons = [0 ,1 ,5, 10, 100, 1000, 10000, 50000, 100000]
 #epsilons = [0, 1, 100, 1000, 10000, 50000, 100000]
-throw_outs = [.03, .07, .1, .2,.5,1, 1.5, 2, 5]
+throw_outs = [False, .03, .7, .1, .2, .5, 1]
 
 for e in epsilons:
     for t in throw_outs:
         print(f"model: {e}, {t}, {BATCH_SIZE} begin")
         model = Classifier(n_features)
-        info, mode = er.run_experiment(model,
+        info, mode = er.baseline_experiment(model,
                                                training_dataset,
                                                testing_dataset,
                                                epsilon=e,
                                                alpha=2,
                                                epochs=200,
                                                add_noise=True,
-                                               throw_out_threshold=t,
+                                               C=t,
                                                batch_size=BATCH_SIZE,
                                                lf=torch.nn.NLLLoss,
                                                print_rate=10)
-        pickle.dump(info, open(f"../../data/synth_{e}_{t}_{BATCH_SIZE}.p", 'wb'))
+        pickle.dump(info, open(f"../../data/synth_b_{e}_{t}_{BATCH_SIZE}.p", 'wb'))
