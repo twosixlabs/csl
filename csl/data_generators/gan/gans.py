@@ -387,6 +387,7 @@ class DCGAN(object):
         # providing values for alpha and epsilon enables dp_training
         self.alpha = alpha
         self.epsilon = epsilon
+        self.throw_out_threshold = throw_out_threshold
         self.enable_dp_training = (
             True if (alpha is not None) and (epsilon is not None) else False
         )

@@ -18,7 +18,7 @@ import csl.synthesizers as syn
 
 # VARS
 METHOD = "dcgan"
-DATASET_NAME = "imagenette"
+DATASET_NAME = "celeba"
 MODELS_DIR = "/home/ben.gelman/debug/private_models/"
 DATA_DIR = "/home/ben.gelman/debug/private_datasets/"
 TASK = ["train"]  # "val"]  # successively mimics the train and validation sets
@@ -38,9 +38,9 @@ EPSILONS, ALPHAS, THROW_OUTS = [1e6, 2e5], [20], [10]
 
 for ALPHA in ALPHAS:
     if ALPHA is None:
-        N_EPOCHS = 500
-    else:
         N_EPOCHS = 300
+    else:
+        N_EPOCHS = 100
     for EPSILON in EPSILONS:
         for THROW_OUT in THROW_OUTS:
             args = {
@@ -57,7 +57,7 @@ for ALPHA in ALPHAS:
                 "model_save_dir": MODELS_DIR,
                 "alpha": ALPHA,
                 "epsilon": EPSILON,
-                "throw_out": THROW_OUT}
+                "throw_out_threshold": THROW_OUT}
             syn.train_and_synthesize(**args)
 
             # LOAD THE PRETRAINED MODELS
