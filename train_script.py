@@ -18,7 +18,7 @@ import csl.synthesizers as syn
 
 # VARS
 METHOD = "dcgan"
-DATASET_NAME = "celeba"
+DATASET_NAME = "imagenette"
 MODELS_DIR = "/home/ben.gelman/debug/private_models/"
 DATA_DIR = "/home/ben.gelman/debug/private_datasets/"
 TASK = ["train"]  # "val"]  # successively mimics the train and validation sets
