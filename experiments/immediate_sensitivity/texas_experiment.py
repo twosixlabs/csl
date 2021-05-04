@@ -37,15 +37,15 @@ class Texas_Classifier(nn.Module):
     print("test 3")
     
     
-epsilons = [10000, 50000, 100000]
-throw_outs = [0]
-widths = [128]
+epsilons = [1, 10, 100, 1000, 75000, 500000, 10000, 50000, 100000]
+t = 0
+widths = [128, 256]
 
 for w in widths:
     for e in epsilons:
         infos = []
-        for t in range(5):
-            print(f"model: {w}, {e}, {0}, {64} begin")
+        for i in range(20):
+            print(f"model: {w}, {e}, {t}, {64} begin")
             model = Texas_Classifier(w)
             info, _ = er.run_experiment(model,
                                             texas_train,
@@ -54,10 +54,10 @@ for w in widths:
                                             alpha=2,
                                             epochs=20,
                                             add_noise=True,
-                                            throw_out_threshold=False,
+                                            throw_out_threshold=t,
                                             throw_out_std=0,
                                             batch_size=64,
                                             lf=torch.nn.NLLLoss,
                                             print_rate=1)
             infos.append(info)
-            pickle.dump(infos, open(f"../../data/texas/texas_m_{w}_{e}_{0}_{64}.b", 'wb'))
+        pickle.dump(infos, open(f"../../data/texas/texas_20m_{w}_{e}_{t}_{64}.b", 'wb'))

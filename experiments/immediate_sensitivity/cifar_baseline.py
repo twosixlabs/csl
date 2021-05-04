@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 cifar_train = datasets.CIFAR100(root='../../inputs', train=True, download=True, transform=torchvision.transforms.ToTensor()) #target_transform=one_hot_label)
 cifar_test = datasets.CIFAR100(root='../../inputs', train=False, download=True, transform=torchvision.transforms.ToTensor())
 
-#_, cifar_train = train_test_split(cifar_train,test_size=.18, shuffle=True)
+_, cifar_train = train_test_split(cifar_train,test_size=.18, shuffle=True)
 
 
 print("test 2")
@@ -200,24 +200,24 @@ class DenseNet3(nn.Module):
     print("test 3")
     
     
-epsilons = [0, 1000, 10000, 50000, 100000]
-throw_outs = [0]# , 1, 1.5, 2, 2.5, 3]
+epsilons = [10000, 100000, 1000000]
+throw_outs = [5] # , 1, 1.5, 2, 2.5, 3]
 batch_size = 64
 
 for e in epsilons:
     for t in throw_outs:
         print(f"model:, {e}, {t}, {batch_size} begin")
-        model = DenseNet3(40, 100)
-        info, mode = er.run_experiment(model,
+        #model = DenseNet3(40, 100)
+        model = Cifar_Classifier()
+        info, mode = er.baseline_experiment(model,
                                         cifar_train,
                                         cifar_test,
                                         epsilon=e,
                                         alpha=2,
                                         epochs=20,
                                         add_noise=True,
-                                        throw_out_threshold=False,
-                                        throw_out_std=t,
+                                        C = t,
                                         batch_size=batch_size,
                                         lf=torch.nn.CrossEntropyLoss,
                                         print_rate=1)
-        pickle.dump(info, open(f"../../data/cifar/cifar_f_{e}_{t}_{batch_size}.b", 'wb'))
+        pickle.dump(info, open(f"../../data/cifar/cifar_b_{e}_{t}_{batch_size}.b", 'wb'))

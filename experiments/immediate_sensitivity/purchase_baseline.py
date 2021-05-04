@@ -39,26 +39,27 @@ class Purchase_Classifier(nn.Module):
     print("test 3")
     
     
-epsilons = [1000, 10000, 100000, 1000000]
-clips  = [.1, .5, 1, 5]
-batches = [32, 64, 128]
-widths = [256]
+epsilons = [10000, 100000, 1000000]
+clips  = [.1, .5]
+b = 64
+w= 256
 
-for w in widths:
-    for e in epsilons:
-        for t in clips:
-            for b in batches:
-                print(f"model: {w}, {e}, {t}, {b} begin")
-                model = Purchase_Classifier(w)
-                info, model = er.baseline_experiment(model,
-                                               purchase_train,
-                                               purchase_test,
-                                               epsilon=e,
-                                               alpha=2,
-                                               epochs=20,
-                                               add_noise=True,
-                                               C=t,
-                                               batch_size=b,
-                                               lf=torch.nn.NLLLoss,
-                                               print_rate=1)
-                pickle.dump(info, open(f"../../data/purchase/purchase_std_b_{w}_{e}_{t}_{b}.b", 'wb'))
+for e in epsilons:
+    for t in clips:
+        infos = []
+        for i in range(5):
+            print(f"model: {w}, {e}, {t}, {b} begin")
+            model = Purchase_Classifier(w)
+            info, model = er.baseline_experiment(model,
+                                            purchase_train,
+                                            purchase_test,
+                                            epsilon=e,
+                                            alpha=2,
+                                            epochs=20,
+                                            add_noise=True,
+                                            C=t,
+                                            batch_size=b,
+                                            lf=torch.nn.NLLLoss,
+                                            print_rate=1)
+            infos.append(info)
+        pickle.dump(infos, open(f"../../data/purchase/purchase_mb_{w}_{e}_{t}_{b}.b", 'wb'))

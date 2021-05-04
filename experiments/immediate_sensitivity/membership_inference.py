@@ -15,18 +15,19 @@ def merlin(model, inputs, labels, lf):
     sigma = .01
     T = 100
     loss_function = lf(reduction='none')
-    inp = Variable(inputs, requires_grad=True)
-    inp = inp.to(torch.cuda.current_device())
-    outputs = model.forward(inp)
-    labels = labels.to(torch.cuda.current_device())
-    loss = loss_function(torch.squeeze(outputs), torch.squeeze(labels))
+    inp = Variable(inputs, requires_grad=False)
+    with torch.no_grad():
+        inp = inp.to(torch.cuda.current_device())
+        outputs = model.forward(inp)
+        labels = labels.to(torch.cuda.current_device())
+        loss = loss_function(torch.squeeze(outputs), torch.squeeze(labels))
     counts = torch.zeros(len(loss)).to(torch.cuda.current_device())
 
     for i in range(T):
-        noisy_inp = inp + (sigma * torch.randn(1, device=torch.cuda.current_device()))
-
-        noisy_outputs = model.forward(noisy_inp)
-        noisy_loss = loss_function(torch.squeeze(noisy_outputs), torch.squeeze(labels))
+        with torch.no_grad():
+            noisy_inp = inp + (sigma * torch.randn(1, device=torch.cuda.current_device()))
+            noisy_outputs = model.forward(noisy_inp)
+            noisy_loss = loss_function(torch.squeeze(noisy_outputs), torch.squeeze(labels))
         gt = noisy_loss > loss
         counts += gt
     return counts.cpu(), [float(l) for l in loss.cpu()]
@@ -89,6 +90,7 @@ def run_merlin_loader(model, thresh, loader, lf=nn.MSELoss):
     ratios = []
     for inputs, labels in loader:
         ratios.append(run_merlin(model, thresh, inputs, labels, lf))
+        torch.cuda.empty_cache()
     return sum(ratios)/len(ratios)
 
 
@@ -102,11 +104,12 @@ def gaussian_pdf(sd, x):
 
 
 def membership_inf(model, avg_train_loss, inputs, labels, lf=nn.MSELoss):
-    inp = Variable(inputs, requires_grad=True)
+    inp = Variable(inputs, requires_grad=False)
     inp = inp.to(torch.cuda.current_device())
-    outputs = model.forward(inp)
-    labels = labels.to(torch.cuda.current_device())
-    loss = lf(reduction='none')(torch.squeeze(outputs), labels)
+    with torch.no_grad():
+        outputs = model.forward(inp)
+        labels = labels.to(torch.cuda.current_device())
+        loss = lf(reduction='none')(torch.squeeze(outputs), labels)
     pass_inf = [1 if abs(l) < avg_train_loss else 0 for l in loss]
 
     return pass_inf, [float(l) for l in loss]
@@ -131,6 +134,7 @@ def run_yeom_loader(model, avg_train_l, loader, lf=nn.MSELoss, num_batches=None)
     for i, (inputs, labels) in enumerate(loader):
         if (num_batches is not None) and i >= num_batches:
             break
+        torch.cuda.empty_cache()
         ratios.append(run_membership_inference_attack(model, avg_train_l, inputs, labels, lf))
 
     return sum(ratios)/len(ratios)

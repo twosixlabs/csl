@@ -39,27 +39,30 @@ class Purchase_Classifier(nn.Module):
     print("test 3")
     
     
-epsilons = [1000, 10000, 50000, 100000]
-throw_outs = [1.25, 2.5, 3]
-batches = [64]
-widths = [256]
+#epsilons = [1000, 10000, 50000, 100000]
+#throw_outs = [0, 5, 10] #1, 1.5, 2, 5, 10]
+epsilons = [0]
+throw_outs = [0]
+b = 64
+w = 256
 
-for w in widths:
-    for e in epsilons:
-        for t in throw_outs:
-            for b in batches:
-                print(f"model: {w}, {e}, {t}, {b} begin")
-                model = Purchase_Classifier(w)
-                info, mode = er.run_experiment(model,
-                                                purchase_train,
-                                                purchase_test,
-                                                epsilon=e,
-                                                alpha=2,
-                                                epochs=20,
-                                                add_noise=True,
-                                                throw_out_threshold=False,
-                                                throw_out_std=t,
-                                                batch_size=b,
-                                                lf=torch.nn.NLLLoss,
-                                                print_rate=1)
-                pickle.dump(info, open(f"../../data/purchase/purchase_std_{w}_{e}_{t}_{b}.b", 'wb'))
+for e in epsilons:
+    for t in throw_outs:
+        infos = []
+        for i in range(5):
+            print(f"model: {w}, {e}, {t}, {b} begin")
+            model = Purchase_Classifier(w)
+            info, mode = er.run_experiment(model,
+                                            purchase_train,
+                                            purchase_test,
+                                            epsilon=e,
+                                            alpha=2,
+                                            epochs=20,
+                                            add_noise=True,
+                                            throw_out_threshold=False,
+                                            throw_out_std=t,
+                                            batch_size=b,
+                                            lf=torch.nn.NLLLoss,
+                                            print_rate=1)
+            infos.append(info)
+        pickle.dump(infos, open(f"../../data/purchase/purchase_m_{w}_{e}_{t}_{b}.b", 'wb'))

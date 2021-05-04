@@ -16,10 +16,12 @@ def loader_accuracy(model, test_loader, lf=nn.NLLLoss()):
 
     #grab a batch from the test loader
     for examples, labels in test_loader:
-        examples = examples.to(torch.cuda.current_device())
-        gpu_lab = labels.to(torch.cuda.current_device())
-        outputs = model.forward(examples)
-        lossies.append(lf(torch.squeeze(outputs), torch.squeeze(gpu_lab)))
+        torch.cuda.empty_cache()
+        with torch.no_grad():
+            examples = examples.to(torch.cuda.current_device())
+            gpu_lab = labels.to(torch.cuda.current_device())
+            outputs = model.forward(examples)
+            lossies.append(lf(torch.squeeze(outputs), torch.squeeze(gpu_lab)))
         
         #for each output in the batch, check if the label is correct
         for i, output in enumerate(outputs):
@@ -56,6 +58,8 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
         train_losses = []
         for x_batch_train, y_batch_train in train_loader:
             torch.cuda.empty_cache()
+            x_batch_train =  x_batch_train.to(torch.cuda.current_device())
+            y_batch_train =  y_batch_train.to(torch.cuda.current_device())
             plz_update = True
 
             model_optimizer.zero_grad()
@@ -80,7 +84,6 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
                     throw_out_threshold = ms + (throw_out_std * std)
                 good_idxs = np.array(batch_sensitivities) < throw_out_threshold
                 #print(len(x_batch_train[good_idxs]), 'out of', len(x_batch_train))
-
                 # re-do the gradients
                 good_xs = x_batch_train[good_idxs]
                 good_ys = y_batch_train[good_idxs]
@@ -88,8 +91,8 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
                 if len(good_xs) / len(x_batch_train) < 0.5:
                     plz_update = False
                 else:
-                    good_xs = good_xs.to(torch.cuda.current_device())
-                    good_ys = good_ys.to(torch.cuda.current_device())
+                    #good_xs = good_xs.to(torch.cuda.current_device())
+                    #good_ys = good_ys.to(torch.cuda.current_device())
                     outputs = model.forward(good_xs)
                     loss = model_criterion(torch.squeeze(outputs), good_ys)
 
@@ -158,8 +161,8 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, ep
     train_losses = []
     
     for epoch in range(epochs):
+        train_losses = []
         for x_batch_train, y_batch_train in train_loader:
-            train_losses = []
 
             model_optimizer.zero_grad()
             inp = Variable(x_batch_train, requires_grad=True)
@@ -182,6 +185,75 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, ep
 
             model_optimizer.step()
 
+
+        
+        avg_test_acc, avg_test_l = loader_accuracy(model, test_loader, lf=model_criterion)
+        avg_train_l = sum(train_losses)/len(train_losses)
+            
+        tpr = mi.run_yeom_loader(model, avg_train_l, train_loader, lf=lf)
+        fpr = mi.run_yeom_loader(model, avg_train_l, test_loader, lf=lf)
+        adv = tpr-fpr
+
+        madv, mopt_round, mtpr, mfpr = mi.merlin_optimal_thresh(model, train_loader, test_loader, lf=lf, num_batches=20, tpr=True)
+
+        info['train_l'].append(avg_train_l.item())
+        info['test_l'].append(avg_test_l.item())
+        info['yeom_tpr'].append(tpr)
+        info['yeom_fpr'].append(fpr)
+        info['acc'].append(avg_test_acc)
+        info['merlin_tpr'].append(mtpr)
+        info['merlin_fpr'].append(mfpr)
+        
+        if epoch % print_rate == 0:
+            acc = avg_test_acc
+            print(f'Epoch {epoch}: train loss {avg_train_l}, test loss {avg_test_l}, adv {adv}, acc {acc}')
+
+    return info, model
+
+
+def weight_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, add_noise=False, batch_size=32, lf=nn.NLLLoss, print_rate=1):
+    if epsilon==0:
+        add_noise=False
+    # reset the model
+    model.to(torch.cuda.current_device())
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, drop_last=True)
+    model_criterion = lf() 
+    model_optimizer = optim.Adam(model.parameters(),lr=0.001)
+    
+    epsilon_iter = epsilon / epochs
+    num_batches = len(train_set) // batch_size
+
+    info = defaultdict(list)
+    train_accs = []
+    test_accs = []
+    advs = []
+    sens = .01 * 3.1622 # learning rate x 1 - beta1 / root(1 - beta2)
+
+    
+    train_losses = []
+    
+    for epoch in range(epochs):
+        train_losses = []
+        for x_batch_train, y_batch_train in train_loader:
+
+            model_optimizer.zero_grad()
+            inp = Variable(x_batch_train, requires_grad=True)
+            inp = inp.to(torch.cuda.current_device())
+            outputs = model.forward(inp)
+            y_batch_train = y_batch_train.to(torch.cuda.current_device())
+            loss = model_criterion(outputs, y_batch_train)
+            loss.backward()
+            train_losses.append(loss) 
+            
+
+            model_optimizer.step()
+
+        if add_noise:
+            sigma = np.sqrt((sens**2 * alpha) / (2 * epsilon_iter))
+            with torch.no_grad():
+                for p in model.parameters():
+                    p += (sigma * torch.randn(p.shape,device=torch.cuda.current_device()).float())
 
         
         avg_test_acc, avg_test_l = loader_accuracy(model, test_loader, lf=model_criterion)
