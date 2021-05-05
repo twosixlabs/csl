@@ -12,6 +12,6 @@ At the module level:
 Tutorials for running the module code are located in the `notebooks` directory. These notebooks have runnable examples of the synthetic data generation with different datasets, models, and privacy options.  
 
 Research code and current experimentation that hasn't been formally added to the module are located in the `experiments` directory. Particular experiments of interest include:  
-`asynch` - Experiments for the collaborative training framework.
-`immediate_sensitivity` - Experiments for diffrential privacy implementations and evaluations.
-`task3` - Experiments for synthetic data generation.
+`asynch` - Experiments for the collaborative training framework.  
+`immediate_sensitivity` - Experiments for diffrential privacy implementations and evaluations.  
+`task3` - Experiments for synthetic data generation.  
