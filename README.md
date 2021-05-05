@@ -3,6 +3,7 @@
 ## Directory Structure
 
 The primary module code is located inside the `csl` directory.  
+  
 At the module level:  
 `datasets.py` - Adds datasets into the automatic training framework.   
 `synthesizers.py` - Adds synthetic models into the automatic training framework.  
