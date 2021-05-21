@@ -210,9 +210,10 @@ nobkd_trn_x = nobkd_trn_x.reshape(nobkd_trn_x.shape[0], -1)
 bkd_trn_x = bkd_trn_x.reshape(bkd_trn_x.shape[0], -1)
 print('Training data shape, no backdoor:', nobkd_trn_x.shape)
 print('Training data shape, backdoor:', bkd_trn_x.shape)
+print('Training Y data shape, backdoor:', bkd_trn_y.shape)
 
 n_features = nobkd_trn_x.shape[1]
-n_classes = 2
+n_classes = 100
 
 BATCH_SIZE = 64
 
@@ -242,12 +243,12 @@ bkd_results = [backdoor_experiment(train_loader_bkd, bkd_trn_x, bkd_trn_y,
 # #all_backdoor_epsilons[epsilon] = calculated_eps
 # print('for epsilon', config.epsilon, 'calculated epsilon was', calculated_eps)
 
-f1 = open(f'results/nobkd_results_{config.distance}_{config.epsilon}.txt', "a+")
+f1 = open(f'results_p100/nobkd_results_{config.distance}_{config.epsilon}.txt', "a+")
 for r in nobkd_results:
     f1.write(str(r) + '\n')
 f1.close()
 
-f2 = open(f'results/bkd_results_{config.distance}_{config.epsilon}.txt', "a+")
+f2 = open(f'results_p100/bkd_results_{config.distance}_{config.epsilon}.txt', "a+")
 for r in bkd_results:
     f2.write(str(r) + '\n')
 f2.close()
