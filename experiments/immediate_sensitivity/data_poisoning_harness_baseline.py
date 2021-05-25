@@ -2,12 +2,12 @@ import os
 import multiprocessing as mp
 
 epsilon = 1
-epochs = 24
-trials = 30
+epochs = 1
+trials = 1
 distance = 8
-filename = '/home/jnear/co/temp/auditing-dpsgd/datasets/fmnist/clipbkd-new-8.npy'
+filename = '/home/jnear/co/temp/auditing-dpsgd/datasets/p100/p100_8.npy'
 
-NUM_THREADS = 32
+NUM_THREADS = 1
 
 def exp_run(cmd):
     print(cmd)
