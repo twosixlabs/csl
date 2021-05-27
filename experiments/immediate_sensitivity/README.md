@@ -13,10 +13,10 @@ After these programs have trained models, we save their weights and data to a se
 
 ### Datsets
 
-We run experiments on the Texas-100, Purchase-100, and Cifar-10 datasets
+We run experiments on the Texas-100, Purchase-100, Cifar-10, and FMNIST datasets
 
 
-## Analysis
+## Membership Inference Analysis
 
 A series of python notebooks generate the plots.  The following highlights differences between them
 
@@ -27,8 +27,21 @@ A series of python notebooks generate the plots.  The following highlights diffe
 
  - `pareto.ipynb` generates pareto fronts for all three datasets.
 
-
 There are a few more notebooks, but these include the primary results.
+
+## Data Poisoning Analysis
+
+The following Python files run the trials and generate the results:
+
+ - `data_poisoning_experiment_baseline.py`
+ - `data_poisoning_experiment.py`
+ - `data_poisoning_harness_baseline.py`
+ - `data_poisoning_harness.py`
+
+The following notebooks calculate epsilon values and graph the results:
+
+ - `Data Poisoning Attack Epsilon Calculation.ipynb`
+ - `Data Poisoning Graphs.ipynb`
 
 ## Library 
 
