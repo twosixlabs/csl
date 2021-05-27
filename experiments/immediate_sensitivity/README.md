@@ -6,14 +6,14 @@ This directory includes experiment runners and data analysis for immediate sensi
 
 Each dataset has two files that run experiments: 
  - `[dataset]_experiment.py` trains models with immediate sensitivity.
- - `[dataset]_experiment.py` trains models with the gradient clipping approach to differential privacy.
+ - `[dataset]_baseline.py` trains models with the gradient clipping approach to differential privacy.
 
 After these programs have trained models, we save their weights and data to a series of pickle files in the `csl/data/[dataset]` directory.
 
 
 ### Datsets
 
-We run experiments on the Texas-100, Purchase-100, and Cifar-100 datasets
+We run experiments on the Texas-100, Purchase-100, and Cifar-10 datasets
 
 
 ## Analysis
@@ -24,6 +24,8 @@ A series of python notebooks generate the plots.  The following highlights diffe
  - `texas_sens_analysis.ipynb` looks at how immediate sensitivity changes during training. 
  - `texas_width_analysis.ipynb` considers how membership inference advantage might change with a larger or smaller model.
  - `purchase_mult_analysis.ipynb` is the same as `tex_mult_analysis.ipynb` but for the Purchase-100 dataset.
+
+ - `pareto.ipynb` generates pareto fronts for all three datasets.
 
 
 There are a few more notebooks, but these include the primary results.

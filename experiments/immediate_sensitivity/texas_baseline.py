@@ -12,11 +12,12 @@ print("test")
 features = pickle.load(open("../../inputs/texas_100_features.p", 'rb')).astype(np.float32)
 labels = pickle.load(open("../../inputs/texas_100_labels.p", 'rb'))
 
+
 ds = list(zip(features, labels))
+_, ds = train_test_split(ds, shuffle=True, random_state=7)
 
-_, ds = train_test_split(ds, shuffle=True)
+texas_train, texas_test = train_test_split(ds, test_size=.3, shuffle=True, random_state=7)
 
-texas_train, texas_test = train_test_split(ds, test_size=.3, shuffle=True)
 print("test 2")
 
 class Texas_Classifier(nn.Module):
@@ -39,7 +40,8 @@ print("test 3")
     
 batch_sizes = [64]
 #epsilons = [
-epsilons = [1, 100, 1000, 100000, 500000, 2000000, 100000, 1000000]
+#epsilons = [1, 100, 1000, 500000, 2000000, 100000, 1000000]
+epsilons = [250000, 50000]
 clips  = [ .2], # .4, .8, 1, 5]
 widths = [128, 256]#, 256, 512, 1024]
 
@@ -57,7 +59,7 @@ for w in widths:
                                                alpha=2,
                                                epochs=20,
                                                add_noise=True,
-					       C=.2,
+                                               C=.2,
                                                batch_size=64,
                                                lf=torch.nn.NLLLoss,
                                                print_rate=1)
