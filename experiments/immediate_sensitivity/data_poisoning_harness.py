@@ -5,7 +5,7 @@ epsilon = 1000
 epochs = 10
 trials = 1
 distance = 8
-filename = '/home/jnear/co/temp/auditing-dpsgd/datasets/p100/p100_8.npy'
+filename = 'auditing-dpsgd/datasets/p100/p100_8.npy'
 
 NUM_THREADS = 1
 

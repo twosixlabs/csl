@@ -228,7 +228,6 @@ parser.add_argument('filename', type=str,
 config = parser.parse_args()
 print(config.epsilon)
 
-# /home/jnear/co/temp/auditing-dpsgd/datasets/fmnist/clipbkd-new-8.npy
 print('Loading data file', config.filename)
 
 (nobkd_trn_x, nobkd_trn_y), (bkd_trn_x, bkd_trn_y), _, _ = np.load(config.filename, allow_pickle=True)
