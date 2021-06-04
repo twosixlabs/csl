@@ -165,6 +165,13 @@ def parse_args():
         type=float,
         required=False,
     )
+    parser.add_argument(
+        "--throw_out_threshold",
+        help="float, Sensitivity threshold for throwing out points (default=None)",
+        default=None,
+        type=float,
+        required=False,
+    )
     return parser.parse_args()
 
 
@@ -254,6 +261,7 @@ def train_and_synthesize(
     model_save_dir: os.PathLike = "temp/models/",
     alpha: float = None,
     epsilon: float = None,
+    throw_out_threshold: float = None
 ):
 
     normalize_strategy = (
@@ -314,11 +322,17 @@ def train_and_synthesize(
                     num_epochs=num_epochs,
                     alpha=alpha,
                     epsilon=epsilon,
+                    throw_out_threshold=throw_out_threshold
                 )
+
+                # assemble the model dir based on dp parameteres
+                model_dir = f"{model_save_dir}{dataset_name}_{method}"
                 if (alpha is not None) and (epsilon is not None):
-                    model_dir = f"{model_save_dir}{dataset_name}_{method}_dp_{alpha}a_{epsilon}e/{task}/{idx}/"
-                else:
-                    model_dir = f"{model_save_dir}{dataset_name}_{method}/{task}/{idx}/"
+                    model_dir += f"_{alpha}a_{epsilon}e"
+                if throw_out_threshold is not None:
+                    model_dir += f"_{throw_out_threshold}t"
+                model_dir += f"/{task}/{idx}/"
+
                 confirm_directory(model_dir)
                 model.save_model(model_path=model_dir)
             elif task == "eval":
@@ -327,10 +341,15 @@ def train_and_synthesize(
 
             num_samples = label_info[f"{task}_labels"][1][idx]
             log.info(f"Creating the {idx}-class data with {num_samples}-samples")
+
+            # assemble the model dir based on dp parameteres
+            data_dir = f"{data_save_dir}{dataset_name}_{method}"
             if (alpha is not None) and (epsilon is not None):
-                data_dir = f"{data_save_dir}{dataset_name}_{method}_dp_{alpha}a_{epsilon}e/{task}/{idx}/"
-            else:
-                data_dir = f"{data_save_dir}{dataset_name}_{method}/{task}/{idx}/"
+                data_dir += f"_{alpha}a_{epsilon}e"
+            if throw_out_threshold is not None:
+                data_dir += f"_{throw_out_threshold}t"
+            data_dir += f"/{task}/{idx}/"
+
             confirm_directory(data_dir)
             model.generate_images(num_samples, data_dir)
 
