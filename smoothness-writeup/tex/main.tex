@@ -34,7 +34,61 @@
 
 \begin{document}
 
-\section{A Tiny Model}
+\section{A Tiny Model (No Vectors)}
+
+A single layer neural net implements essentially just a single multiplication.
+
+We have an input vector ⸨𝐱 ≜ [x₁,x₂]⸩, a weights vector ⸨𝛉 ≜ [θ₁,θ₂]⸩, and the
+classification function ⸨f⸩ is:
+M⁅ f⸤𝛉⸥(𝐱) ≜ θ₁x₁ + θ₂x₂ M⁆
+
+Here is the mean squared error loss function over scalars:
+M⁅ L(a,b) ≜ (a - b)² M⁆
+and the loss of our function ⸨f⸩ {w.r.t.} a training example ⸨y⸩ is:
+M⁅ L⸤f⸤𝛉⸥⸥(𝐱,y) Aː[t]rcl
+                A⁅ ⧼≜⧽ (f⸤𝛉⸥(𝐱) - y)² 
+                A⁃ ⧼=⧽ (θ₁x₁ + θ₂x₂ - y)²
+                A⁃ ⧼=⧽ θ₁²x₁² + θ₂²x₂² + 2θ₁θ₂x₁x₂ - 2θ₁x₁y - 2θ₂x₂y + y²
+                A⁆
+M⁆
+Here is the gradient of ⸨L⸤f⸤𝛉⸥⸥(𝐱,y)⸩ {w.r.t.} ⸨𝛉⸩:
+M⁅ ∇⸤𝛉⸥L⸤f⸤𝛉⸥⸥(𝐱,y) Aː[t]rcl
+                    A⁅ ⧼≜⧽ ‘[ \frac{∂(L⸤f⸤𝛉⸥⸥(𝐱,y))}{∂θ₁} , \frac{∂(L⸤f⸤𝛉⸥⸥(𝐱,y))}{∂θ₂} ’]
+                    A⁃ ⧼=⧽ ‘[ 2θ₁x₁²+ 2θ₂x₁x₂ - 2x₁y , 2θ₂x₂²+ 2θ₁x₁x₂ - 2x₂y ’]
+                    A⁆
+M⁆
+The «immediate sensitivity» is defined as:
+M⁅ «𝐈𝐒»⸤𝐱,𝛉⸥(f) Aː[t]rcl
+                  A⁅ ⧼≜⧽ ‖ ∇⸤𝐱⸥ ‖ ∇⸤𝛉⸥ L⸤f⸤𝛉⸥⸥(𝐱,y) ‖₂ ‖₂
+                  A⁃ ⧼=⧽ ‖ ∇⸤𝐱⸥ ‖ ‘[ 2θ₁x₁²+ 2θ₂x₁x₂ - 2x₁y , 2θ₂x₂²+ 2θ₁x₁x₂ - 2x₂y ’] ‖₂ ‖₂
+                  A⁃ ⧼=⧽ ‖ ∇⸤𝐱⸥ √{(2θ₁x₁²+ 2θ₂x₁x₂ - 2x₁y)² + (2θ₂x₂²+ 2θ₁x₁x₂ - 2x₂y)²} ‖₂
+                  A⁃ ⧼=⧽ ‖ ∇⸤𝐱⸥ 2√{(x₁² + x₂²)(θ₁x₁ + θ₂x₂ - y)²} ‖₂
+                  A⁆
+M⁆
+% We want to know ⸨β⸩ such that the above quantity is ⸨β⸩-smooth.
+% The derivative of the loss is:
+% M⁅ \frac{∂L⸤f⸤θ⸥⸥(x,y)}{∂θᵀ} Aː[t]rcl
+%                              A⁅ ⧼≜⧽ \frac{∂(xθᵀ - y)²}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2(xθᵀ - y)\frac{∂(xθᵀ - y)}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2(xθᵀ - y)(\frac{∂(xθᵀ)}{∂θᵀ} - \frac{∂y}{∂θᵀ})
+%                              A⁃ ⧼=⧽ 2(xθᵀ - y)\frac{∂(xθᵀ)}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2x(xθᵀ - y)\frac{∂θᵀ}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2x(xθᵀ - y)
+%                              A⁆
+% M⁃
+% M⁃ \frac{∂L⸤f⸤θ⸥⸥(x,y)}{∂θᵀ} Aː[t]rcl
+%                              A⁅ ⧼≜⧽ \frac{∂(xθᵀ - y)²}{∂θᵀ}
+%                              A⁃ ⧼=⧽ \frac{∂((xθᵀ)² - 2xyθᵀ - y²)}{∂θᵀ}
+%                              A⁃ ⧼=⧽ \frac{∂((xθᵀ)²)}{∂θᵀ} - \frac{∂(2xyθᵀ)}{∂θᵀ} - \frac{∂(y²)}{∂θᵀ}
+%                              A⁃ ⧼=⧽ \frac{∂((xθᵀ)²)}{∂θᵀ} - 2xy\frac{∂θᵀ}{∂θ}
+%                              A⁃ ⧼=⧽ 2x²θᵀ\frac{∂θᵀ}{∂θᵀ} - 2xy\frac{∂θᵀ}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2x²θᵀ - 2xy
+%                              A⁃ ⧼=⧽ 2x(xθᵀ - y)
+%                              A⁃ ⧼=⧽ ... 2xᵀ(xθᵀ - y)
+%                              A⁆
+% M⁆
+
+\section{A Tiny Model (Vectorized)}
 
 A single layer neural net implements essentially just a single multiplication.
 
@@ -50,7 +104,7 @@ M⁅ L⸤f⸤θ⸥⸥(x,y) Aː[t]rcl
                 A⁃ ⧼=⧽ (xθᵀ - y)²
                 A⁆
 M⁆
-The immediate sensitivity is:
+The «immediate sensitivity» is defined as:
 M⁅ ‖ ∇ₓ ‖ ∇⸤θ⸥ L⸤f⸤θ⸥⸥(x,y) ‖₂ ‖₂
 M⁆
 We want to know ⸨β⸩ such that the above quantity is ⸨β⸩-smooth.
@@ -75,8 +129,6 @@ M⁃ \frac{∂L⸤f⸤θ⸥⸥(x,y)}{∂θᵀ} Aː[t]rcl
                              A⁃ ⧼=⧽ ... 2xᵀ(xθᵀ - y)
                              A⁆
 M⁆
-
-
 
 \end{document}
 \endinput
