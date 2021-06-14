@@ -2,7 +2,7 @@
 # Override variables in CONFIG here...
 # ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
 
-
+BIBTEX := touch
 
 # ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
 # Don't touch stuff below here if possible
@@ -168,7 +168,7 @@ $(OUT_DIR)/$(STYLE)/PHASE1: | $(STG_FILES)
 	touch $@
 
 $(OUT_DIR)/$(STYLE)/PHASE2: $(OUT_DIR)/$(STYLE)/PHASE1
-	cp $(STG_DIR)/*.bib $(@D)/
+	(cp $(STG_DIR)/*.bib $(@D)/) | true
 	cd $(@D) && $(BIBTEX) $(MAIN_SRC)
 	touch $@
 
