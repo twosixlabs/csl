@@ -130,5 +130,48 @@ M⁃ \frac{∂L⸤f⸤θ⸥⸥(x,y)}{∂θᵀ} Aː[t]rcl
                              A⁆
 M⁆
 
+\section{New}
+
+% Need: IS is ⸨β⸩-smooth.
+
+% Know: IS(x)
+% Need to know: IS is ⸨β⸩-smooth
+% Need to know: ⸨ | IS(x) - IS(x') | ≤ ???⸩
+
+% If IS is ⸨β⸩-smooth then ⸨| IS(x) - IS(x') | ≤ β⸩
+
+% We care about: local sensitivity of gradient G
+
+% ‖ G(x) - G(x') ‖₂ ≤ IS(x) + β
+
+% if G' is β-smooth then:
+
+% ‖G'(x) - G'(x')‖ ≤ β ‖x - x'‖        (defn of smoothness)
+% ‖G'(x) - G'(x')‖ ≤ β                 (‖x - x'‖ ≤ 1 by assumption)
+
+
+% LS⸤G⸥(x) = max⸤x' . d(x, x') ≤ 1⸥ ‖ G(x) - G(x') ‖
+
+% MVT says:
+% ∀ x, x'. ∃ x''. x ≤ x'' ≤ x' ∧ ‖G(x) - G(x')‖ / ‖x - x'‖ = G'(x'')
+
+%    ‖G(x) - G(x')‖ / ‖x-x'‖ = G'(x'') for some x''           (mean value theorem)
+% => ‖G(x) - G(x')‖ / ‖x-x'‖ = G'(x) + ‖G'(x) - G'(x'')‖      (arithmetic)
+% => ‖G(x) - G(x')‖ / ‖x-x'‖ ≤ G'(x) + β ‖x - x''‖            (def. of β-smoothness)
+% => ‖G(x) - G(x')‖ / ‖x-x'‖ ≤ G'(x) + β                      (def. absolute value)
+% => ‖G(x) - G(x')‖          ≤ G'(x) + β                      (inequality)
+% => LS⸤G⸥(x)                ≤ G'(x) + β                      (def. of LS)
+
+
+
+% => G(x) - G(x') = G'(x) + ‖G'(x) - G'(x'')‖ 
+% => G(x) - G(x') ≤ G'(x) + β                          (by above)
+% => LS⸤G⸥(x)     ≤ G'(x) + β                          (def of LS)
+
+
+
+
+
+
 \end{document}
 \endinput
