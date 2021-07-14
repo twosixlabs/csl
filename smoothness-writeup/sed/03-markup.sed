@@ -41,51 +41,51 @@ s/⦆/}/g
 # COLOR MODES #
 # ⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄⌄ #
 
-s/A⸨/{A⎨⸨/g
-s/A⸩/⸩A⎬}/g
-
-s/B⸨/{B⎨⸨/g
-s/B⸩/⸩B⎬}/g
-
-s/C⸨/{C⎨⸨/g
-s/C⸩/⸩C⎬}/g
-
-s/A⟪/{A⎨⟪/g
-s/A⟫/⟫A⎬}/g
-
-s/B⟪/{B⎨⟪/g
-s/B⟫/⟫B⎬}/g
-
-s/C⟪/{C⎨⟪/g
-s/C⟫/⟫C⎬}/g
-
-s/A⦑/{A⎨⦑/g
-s/A⦒/⦒A⎬}/g
-
-s/B⦑/{B⎨⦑/g
-s/B⦒/⦒B⎬}/g
-
-s/C⦑/{C⎨⦑/g
-s/C⦒/⦒C⎬}/g
-
-s/A⦓/A⎨⦓/g
-s/A⦔/A⎬⦔/g
-
-s/B⦓/B⎨⦓/g
-s/B⦔/B⎬⦔/g
-
-s/C⦓/C⎨⦓/g
-s/C⦔/C⎬⦔/g
-
-# without \protect, the \renewcommand will barf when used inside \caption: ¯\_﹙ツ﹚_/¯
-s/A⎨/\\begingroup\\protect\\renewcommand\\colorMATH{\\colorMATHA}\\protect\\renewcommand\\colorSYNTAX{\\colorSYNTAXA}/g
-s/A⎬/\\endgroup /g
-
-s/B⎨/\\begingroup\\protect\\renewcommand\\colorMATH{\\colorMATHB}\\protect\\renewcommand\\colorSYNTAX{\\colorSYNTAXB}/g
-s/B⎬/\\endgroup /g
-
-s/C⎨/\\begingroup\\protect\\renewcommand\\colorMATH{\\colorMATHC}\\protect\\renewcommand\\colorSYNTAX{\\colorSYNTAXC}/g
-s/C⎬/\\endgroup /g
+# s/A⸨/{A⎨⸨/g
+# s/A⸩/⸩A⎬}/g
+# 
+# s/B⸨/{B⎨⸨/g
+# s/B⸩/⸩B⎬}/g
+# 
+# s/C⸨/{C⎨⸨/g
+# s/C⸩/⸩C⎬}/g
+# 
+# s/A⟪/{A⎨⟪/g
+# s/A⟫/⟫A⎬}/g
+# 
+# s/B⟪/{B⎨⟪/g
+# s/B⟫/⟫B⎬}/g
+# 
+# s/C⟪/{C⎨⟪/g
+# s/C⟫/⟫C⎬}/g
+# 
+# s/A⦑/{A⎨⦑/g
+# s/A⦒/⦒A⎬}/g
+# 
+# s/B⦑/{B⎨⦑/g
+# s/B⦒/⦒B⎬}/g
+# 
+# s/C⦑/{C⎨⦑/g
+# s/C⦒/⦒C⎬}/g
+# 
+# s/A⦓/A⎨⦓/g
+# s/A⦔/A⎬⦔/g
+# 
+# s/B⦓/B⎨⦓/g
+# s/B⦔/B⎬⦔/g
+# 
+# s/C⦓/C⎨⦓/g
+# s/C⦔/C⎬⦔/g
+# 
+# # without \protect, the \renewcommand will barf when used inside \caption: ¯\_﹙ツ﹚_/¯
+# s/A⎨/\\begingroup\\protect\\renewcommand\\colorMATH{\\colorMATHA}\\protect\\renewcommand\\colorSYNTAX{\\colorSYNTAXA}/g
+# s/A⎬/\\endgroup /g
+# 
+# s/B⎨/\\begingroup\\protect\\renewcommand\\colorMATH{\\colorMATHB}\\protect\\renewcommand\\colorSYNTAX{\\colorSYNTAXB}/g
+# s/B⎬/\\endgroup /g
+# 
+# s/C⎨/\\begingroup\\protect\\renewcommand\\colorMATH{\\colorMATHC}\\protect\\renewcommand\\colorSYNTAX{\\colorSYNTAXC}/g
+# s/C⎬/\\endgroup /g
 
 # ^^^^^^^^^^^ #
 # COLOR MODES # 
@@ -110,7 +110,7 @@ s/⸩/}}}}/g
 s/⦑/{{\\color{\\colorSYNTAX}\\texttt{/g
 s/⦒/}}}/g
 
-s/‹/{\\text{/g
+s/‹/{\\textnormal{/g
 s/›/}}/g
 s/«\*/{\\textbf{/g
 s/\*»/}}/g

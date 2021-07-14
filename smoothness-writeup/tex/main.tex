@@ -170,8 +170,134 @@ M⁆
 
 
 
+\section{Current Situation}
 
+For all of the following, ⸨‖X‖₁⸩ is the L1 norm, ⸨‖X‖₂⸩ is the L2 norm, ⸨‖X‖⸤∞⸥⸩
+is the L❪∞❫ norm, and ⸨‖X‖⸩ (without a subscript) is some norm in a parametrized
+metric space. Same goes for distances ⸨‖X-Y‖₁⸩, ⸨‖X-Y‖₂⸩, ⸨‖X-Y‖⸤∞⸥⸩ and
+⸨‖X-Y‖⸩.
 
+\subsection{From \cite{smooth-sensitivity}}
+
+\begin{definition}[Global Sensitivity \citep{smooth-sensitivity}]
+  The Global Sensitivity of ⸨f⸩ is ⸨«GS»⸤f⸥⸩ where:
+  M⁅ X⁅ ⩊ «GS»⸤f⸥ ≜ \max\limits⸤x,y:‖x-y‖=1⸥ ‖ f(x) - f(y) ‖₁ 
+        ⩊ ⟪\citep[§ 1.2, Definition 1.3]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: ⸨‖x-y‖⸩ is an abstract distance but ⸨‖ f(x) - f(y) ‖₁⸩  is
+  specifically L1 distance.
+\end{definition}
+
+\begin{definition}[Local Sensitivity \citep{smooth-sensitivity}]
+  The Local Sensitivity of ⸨f⸩ at ⸨x⸩ is ⸨«LS»⸤f⸥(x)⸩ where:
+  M⁅ X⁅ ⩊ «LS»⸤f⸥(x) ≜ \max\limits⸤y:‖x-y‖=1⸥ ‖ f(x) - f(y) ‖₁
+        ⩊ ⟪\citep[§ 1.3, Definition 1.6]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: ⸨‖x-y‖⸩ is an abstract distance but ⸨‖ f(x) - f(y) ‖₁⸩  is
+  specifically L1 distance.
+\end{definition}
+
+\begin{definition}[DP-⸨β⸩-Smoothness \citep{smooth-sensitivity}]\ \\
+  A function ⸨f⸩ is DP-⸨β⸩-Smooth if:
+  M⁅ X⁅ ⩊ «GS»⸤\ln(f(⋅))⸥ ≤ β
+        ⩊ ⟪\citep[§ 2.1]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Alternatively, ⸨f⸩ is DP-⸨β⸩-smooth if:
+  M⁅ X⁅ ⩊ ∀ x,y⍪ ‖x-y‖ = 1 ⟹ f(x) ≤ e⸢β⸣f(y)
+        ⩊ ⟪\citep[§ 2.1, Definition 2.1, (2)]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: \cite{smooth-sensitivity} just calls this “⸨β⸩-smooth”.
+  \subparagraph{Why are these the same?} 
+  ⟪
+  M⁅ Aːlcl@{␠}l
+     A⁅ ⧼ ⧽ «GS»⸤\ln(f(⋅))⸥ ≤ β
+     A⁃ ⧼⟺⧽ ∀ x,y⍪ ‖x-y‖ = 1 ⇒ ‖\ln(f(x)) - \ln(f(y))‖₁ ≤ β & ⟅definition⟆
+     A⁃ ⧼⟺⧽ ∀ x,y⍪ ‖x-y‖ = 1 ⇒ \ln(f(x)) ≤ β + \ln(f(y))    & ⟅(somehow?)⟆
+     A⁃ ⧼⟺⧽ ∀ x,y⍪ ‖x-y‖ = 1 ⇒ f(x) ≤ e⸢β⸣f(y)              & ⟅algebra⟆
+     A⁆
+  M⁆
+  ⟫
+\end{definition}
+
+\begin{definition}[DP-⸨β⸩-Smooth Sensitivity \citep{smooth-sensitivity}]\ \\
+  A function ⸨f⸩ has DP-⸨β⸩-Smooth sensitivity if its local sensitivity is
+  ⸨β⸩-smooth:
+  M⁅ «GS»⸤\ln(«LS»⸤f⸥(⋅))⸥ ≤ β M⁆
+  or:
+  M⁅ ∀ x,y⍪ ‖x-y‖ = 1 ⟹ «LS»⸤f⸥(x) ≤ e⸢β⸣«LS»⸤f⸥(y) M⁆
+  \subparagraph{What if ⸨«LS»⸤f⸥⸩ isn't already smooth?}
+  ⟪
+  \cite{smooth-sensitivity} defines a construction of ⸨S⸢*⸣⸤f,β⸥⸩
+  which is the best upper bound on the local sensitivity of ⸨f⸩ which is also
+  ⸨β⸩-smooth; this construction is:
+  M⁅ S⸢*⸣⸤f,β⸥(x) = \max⸤y⸥«LS»⸤f⸥(y)e⸢-β‖x-y‖⸣ M⁆
+  ⟫
+\end{definition}
+
+\subsection{From \cite{metrics-local-sensitivity}}
+
+\begin{definition}[Generalized Global Sensitivity \citep{metrics-local-sensitivity}]
+  The Generalized Global Sensitivity of ⸨f⸩ is ⸨«GGS»⸤f⸥⸩ where:
+  M⁅ X⁅ ⩊ «GGS»⸤f⸥ ≜ \max⸤x,y⸥ \frac{‖f(x)-f(y)‖}{‖x-y‖}
+        ⩊ ⟪\citep[§ 3.2, Definition 2]{metrics-local-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: \cite{metrics-local-sensitivity} just calls this “Global Sensitivity”
+\end{definition}
+
+\begin{definition}[Derivative Sensitivity \citep{metrics-local-sensitivity}]
+  The Derivative Sensitivity of ⸨f⸩ at ⸨x⸩ is ⸨«DS»⸤f⸥(x)⸩ where:
+  M⁅ X⁅ ⩊ «DS»⸤f⸥(x) ≜ ‖f′(x)‖
+        ⩊ ⟪\citep[§ 4.2, Definition 12]{metrics-local-sensitivity}⟫
+     X⁆
+  M⁆
+\end{definition}
+
+\paragraph{From ML literature}
+
+\begin{definition}[ML-⸨β⸩-Smoothness]
+  A function ⸨f⸩ is ML-⸨β⸩-Smooth if:
+  M⁅ X⁅ ⩊ ‖f′(x) - f′(y)‖ ≤ β‖x-y‖ 
+        ⩊ ⟪\citep[§ 3]{convex-optimization-ml-slides}⟫
+     X⁆
+  M⁆
+  or:
+  M⁅ «GGS»⸤f′⸥ ≤ β M⁆
+\end{definition}
+
+\subsection{New Definitions}
+
+\begin{definition}[Immediate Sensitivity]
+  The Immediate Sensitivity of ⸨f⸩ at ⸨x⸩ is ⸨«IM»⸤f⸥(x)⸩ where:
+  M⁅ «IS»⸤f⸥(x) ≜ ‖f′(x)‖ M⁆
+  J⁅ Note: ⸨«IS»⸤f⸥(x) = «DS»⸤f⸥(x)⸩.
+  J⁃ Note: In our case studies we pick specifically the L2 norm, so in that
+     setting, ⸨«IS»⸤f⸥(x) ≜ ‖f′(x)‖₂⸩ and is an instantiation of ⸨«DS»⸤f⸥(x)⸩
+     for a particular norm.
+  J⁆
+\end{definition}
+
+\subsection{Where we are}
+
+We have observed that for some architectures, using the L1 norm, ⸨d«IS»⸤f⸥/dx⸩
+is constant, i.e.,  ⸨d«IS»⸤f⸥/dx = C⸩ for some scalar ⸨C⸩. So ⸨«IS»⸤f⸥⸩ is
+ML-⸨β⸩-smooth for ⸨β=0⸩, and ⸨f⸩ is ML-⸨β⸩-smooth for ⸨β=C⸩.
+
+We are currently investigating the following questions:
+E⁅ Given an ML-⸨β⸩-smooth bound on ⸨f⸩, can we construct some DP-⸨β⸩-smooth bound
+   on ⸨f⸩?
+E⁃ Given an ML-⸨β⸩-smooth bound on some altered ⸨f⸩ (e.g., ⸨\ln(f)⸩), can we
+   construct some DP-⸨β⸩-smooth bound on ⸨f⸩?
+E⁃ Given that ⸨d«IS»⸤f⸥/dx⸩ is constant (or even better; it's ⸨0⸩) for our ⸨f⸩
+   in question, can we directly say something about ⸨«IS»⸤f⸥⸩ being DP-⸨β⸩-smooth?
+E⁆
+
+\bibliographystyle{plainnat}
+\bibliography{local}
 
 \end{document}
 \endinput
