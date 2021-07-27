@@ -1,3 +1,5 @@
+import time
+
 import sympy as sym
 from functools import reduce
 
@@ -33,15 +35,20 @@ class Relu(sym.Function):
 def run_relu(inputs):
     return [Relu(x) for x in inputs]
 
+sym.init_printing(use_unicode=True)
+
+print('constructing')
+start_time = time.process_time()
+
 # 2 features
 inputs = [sym.Symbol(f'x_{n}') for n in range(2)]
 
 # 3 layers, one hidden layer
 # generate the weights
 all_weights = []
-layer1_weights = build_weights(1, 2, 3, all_weights)
-layer2_weights = build_weights(2, 3, 3, all_weights)
-layer3_weights = build_weights(2, 3, 1, all_weights)
+layer1_weights = build_weights(1, 10, 10, all_weights)
+layer2_weights = build_weights(2, 10, 10, all_weights)
+layer3_weights = build_weights(3, 10, 1, all_weights)
 
 # run the network
 layer1_output = run_layer(inputs, layer1_weights)
@@ -57,20 +64,76 @@ loss = (pred_exp - label)**2
 
 # calculate immediate sensitivity
 inner_gradient = [sym.diff(loss, w) for w in all_weights]
-inner_norm = L1_norm(inner_gradient)
+inner_norm = L2_norm(inner_gradient)
 outer_gradient = [sym.diff(inner_norm, x) for x in inputs]
-outer_norm = L1_norm(outer_gradient)
+outer_norm = L2_norm(outer_gradient)
 immediate_sensitivity = outer_norm
+
+print('done constructing, time:', time.process_time() - start_time)
+
+print('substituting')
+start_time = time.process_time()
 
 # substitute in actual values for the weights
 weight_vals = [1.0 for w in all_weights]
 subst = immediate_sensitivity
-for w_name, w_val in zip(all_weights, weight_vals):
-    subst = subst.subs(w_name, w_val)
+# for w_name, w_val in zip(all_weights, weight_vals):
+#     subst = subst.subs(w_name, w_val)
 
-for x in inputs:
-    print(f'1st derivative of immediate sensitivity wrt {x}: {sym.diff(subst, x)}')
-    print(f'2nd derivative of immediate sensitivity wrt {x}: {sym.diff(sym.diff(subst, x), x)}')
+# subst = subst.subs(label, 1)
+
+ivl = sym.Interval(-1,1)
+
+# print(sym.log(subst))
+# print(sym.srepr(subst))
+
+print('done substituting, time:', time.process_time() - start_time)
+
+
+def log(m):
+    pass
+    #print(m)
+
+# recursive analysis for sympy ASTs
+def analyze(e):
+    if e.func in [sym.Float, sym.Integer,
+                  sym.core.numbers.NegativeOne,
+                  sym.core.numbers.Half]:
+        log('found constant')
+
+    elif e.func == sym.Symbol:
+        log('found symbol ' + str(e))
+
+    elif e.func == sym.Add:
+        log('found add')
+        [analyze(a) for a in e.args]
+
+    elif e.func == sym.Mul:
+        log('found mul')
+        [analyze(a) for a in e.args]
+
+    elif e.func == sym.Pow:
+        log('found pow')
+        [analyze(a) for a in e.args]
+
+    elif e.func == Relu:
+        log('found relu')
+        [analyze(a) for a in e.args]
+
+    else:
+        log('found unknown type' + str(e.func))
+
+print('analyzing')
+start_time = time.process_time()
+
+analyze(sym.log(subst))
+print('done analyzing, time:', time.process_time() - start_time)
+
+# for x in inputs:
+#     print(f'immediate sensitivity wrt {x}: {subst}')
+#     print(f'log of immediate sensitivity wrt {x}: {sym.simplify(sym.log(subst))}')
+#     print(f'1st derivative of immediate sensitivity wrt {x}: {sym.diff(subst, x)}')
+#     print(f'2nd derivative of immediate sensitivity wrt {x}: {sym.diff(sym.diff(subst, x), x)}')
 
 # OUTPUT (all weights are 0.1):
 # 1st derivative of immediate sensitivity wrt x_0: 0.0280800000000000
