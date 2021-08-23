@@ -334,69 +334,89 @@ M⁅
 X⁅ ⟪«Setup (syntactic categories, etc.)…»⟫ ⩊
 X⁃
 X⁃ Aːrclcl
-   A⁅ r,s ⧼∈⧽ ℝ
+   A⁅ n   ⧼∈⧽ ℕ
+   A⁃ r   ⧼∈⧽ ℝ
+   % A⁃ ṙ   ⧼∈⧽ ℝ⸢∞⸣  ⧼≜⧽ ℝ ⊎ ❴-∞,∞❵
+   A⁃ s   ⧼∈⧽ ℝ⁺    ⧼≜⧽ ❴r ¦ 0 ≤ r❵
    A⁃ x   ⧼∈⧽ ‹var›
-   A⁃ e   ⧼∈⧽ ‹exp› ⧼⩴⧽ r ¦ x ¦ e+e ¦ e×e ¦ ㏑|e| ¦ ⦑relu⦒(e)
+   A⁃ e   ⧼∈⧽ ‹exp› ⧼⩴⧽ r ¦ x ¦ e+e ¦ e×e ¦ ㏑e ¦ ⦑relu⦒(e)
    A⁃ γ   ⧼∈⧽ ‹env› ⧼≜⧽ ‹var› → ℝ × ℝ
    A⁆
 X⁃
 X⁃ ⟪«Bounded Global Sensitivity Algorithm…»⟫ ⩊
 X⁃
 X⁃ Aːrcl
-   A⁅ ⟦‗⟧⸢‗⸣            ⧼∈⧽ ‹exp› × (‹var› → ℝ × ℝ) → (‹var› → (ℝ × ℝ) × (ℝ × ℝ))
-   A⁃ ⟦r⟧⸢γ⸣(x)         ⧼≜⧽ (0,0),(r,r)
+   A⁅ ⟦‗⟧⸢‗⸣            ⧼∈⧽ ‹exp› × (‹var› → ℝ × ℝ) → (‹var› ⇀ ℝ⁺ × (ℝ × ℝ))
+   A⁃ ⟦r⟧⸢γ⸣(x)         ⧼≜⧽ 0,(r,r)
    A⁃ ⟦x⟧⸢γ⸣(y)         ⧼≜⧽ ‘❴ Aːl@{␠}c@{␠}l
-                               A⁅ (1,1),γ(y) ⧼⟪«if»⟫⧽ x = y
-                               A⁃ (0,0),γ(y) ⧼⟪«if»⟫⧽ x ≠ y
+                               A⁅ 1,γ(y) ⧼⟪«if»⟫⧽ x = y
+                               A⁃ 0,γ(y) ⧼⟪«if»⟫⧽ x ≠ y
                                A⁆ ’.
    A⁃ ⟦e₁+e₂⟧⸢γ⸣(x)     ⧼≜⧽ Aː[t]l
-                            A⁅ (sˡ,sʰ),(rˡ,rʰ)
+                            A⁅ s,(rˡ,rʰ)
                             A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
-                                            A⁅ (sˡ₁,sʰ₁),(rˡ₁,rʰ₁) ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
-                                            A⁃ (sˡ₂,sʰ₂),(rˡ₂,rʰ₂) ⧼=⧽ ⟦e₂⟧⸢γ⸣(x)
-                                            A⁃ sˡ                  ⧼=⧽ sˡ₁ + sˡ₂
-                                            A⁃ sʰ                  ⧼=⧽ sʰ₁ + sʰ₂
-                                            A⁃ rˡ                  ⧼=⧽ rˡ₁ + rˡ₂
-                                            A⁃ rʰ                  ⧼=⧽ rʰ₁ + rʰ₂
+                                            A⁅ s₁,(rˡ₁,rʰ₁) ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
+                                            A⁃ s₂,(rˡ₂,rʰ₂) ⧼=⧽ ⟦e₂⟧⸢γ⸣(x)
+                                            A⁃ s            ⧼=⧽ s₁ + s₂
+                                            A⁃ rˡ           ⧼=⧽ rˡ₁ + rˡ₂
+                                            A⁃ rʰ           ⧼=⧽ rʰ₁ + rʰ₂
                                             A⁆
                             A⁆
    A⁃ ⟦e₁×e₂⟧⸢γ⸣(x)     ⧼≜⧽ Aː[t]l
-                            A⁅ (sˡ,sʰ),(rˡ,rʰ)
+                            A⁅ s,(rˡ,rʰ)
                             A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
-                                            A⁅ (sˡ₁,sʰ₁),(rˡ₁,rʰ₁) ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
-                                            A⁃ (sˡ₂,sʰ₂),(rˡ₂,rʰ₂) ⧼=⧽ ⟦e₂⟧⸢γ⸣(x)
-                                            A⁃ sˡ ⧼=⧽ (sˡ₁rˡ₂ ⊓ sˡ₁ rʰ₂ ⊓ sʰ₁rˡ₂ ⊓ sʰ₁rʰ₂)
-                                                       +
-                                                      (sˡ₂rˡ₁ ⊓ sˡ₂ rʰ₁ ⊓ sʰ₂rˡ₁ ⊓ sʰ₂rʰ₁)
-                                            A⁃ sʰ ⧼=⧽ (sˡ₁rˡ₂ ⊔ sˡ₁ rʰ₂ ⊔ sʰ₁rˡ₂ ⊔ sʰ₁rʰ₂)
-                                                       +
-                                                      (sˡ₂rˡ₁ ⊔ sˡ₂ rʰ₁ ⊔ sʰ₂rˡ₁ ⊔ sʰ₂rʰ₁)
+                                            A⁅ s₁,(rˡ₁,rʰ₁) ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
+                                            A⁃ s₂,(rˡ₂,rʰ₂) ⧼=⧽ ⟦e₂⟧⸢γ⸣(x)
+                                            A⁃ s ⧼=⧽ s₁(|rˡ₂| ⊔ |rʰ₂|) + s₂(|rˡ₁| ⊔ |rʰ₁|)
                                             A⁃ rˡ ⧼=⧽ rˡ₁rˡ₂ ⊓ rˡ₁rʰ₂ ⊓ rʰ₁rˡ₂ ⊓ rʰ₁rʰ₂
                                             A⁃ rʰ ⧼=⧽ rˡ₁rˡ₂ ⊔ rˡ₁rʰ₂ ⊔ rʰ₁rˡ₂ ⊔ rʰ₁rʰ₂
                                             A⁆
                             A⁆
-   A⁃ ⟦㏑|e|⟧⸢γ⸣(x)       ⧼≜⧽ Aː[t]l
-                            A⁅ (sˡ′,sʰ′),(rˡ′,rʰ′)
-                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
-                                            A⁅ (sˡ,sʰ),(rˡ,rʰ) ⧼=⧽ ⟦e⟧⸢γ⸣(x)
-                                            A⁃ sˡ′ ⧼=⧽ \frac{sˡ}{|rˡ|⊔|rʰ|}
-                                            A⁃ sʰ′ ⧼=⧽ \frac{sʰ}{|rˡ|⊓|rʰ|}
-                                            A⁃ rˡ′ ⧼=⧽ ㏑(|rˡ| ⊓ |rʰ|)
-                                            A⁃ rʰ′ ⧼=⧽ ㏑(|rˡ| ⊔ |rʰ|)
-                                            A⁆
+   A⁃ ⟦eⁿ⟧                ⧼≜⧽ Aː[t]l
+                              A⁅ s′,(rˡ′,rʰ′)
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ s,(rˡ,rʰ) ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ s′ ⧼=⧽ … n⟨e⟩⸢n-1⸣ s
+                                              A⁃ rˡ′ ⧼=⧽ ???
+                                              A⁃ rʰ′ ⧼=⧽ ???
+                                              A⁆
+                            A⁆
+   A⁃ ⟦㏑e⟧⸢γ⸣(x)         ⧼≜⧽ Aː[t]l
+                              A⁅ s′,(rˡ′,rʰ′)
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ s,(rˡ,rʰ) ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ s′ ⧼=⧽ \frac{s}{rˡ}
+                                              A⁃ rˡ′ ⧼=⧽ ㏑rˡ
+                                              A⁃ rʰ′ ⧼=⧽ ㏑rʰ
+                                              A⁃ 0   ⧼<⧽ rˡ ≤ rʰ
+                                              A⁆
                             A⁆
    A⁃ ⟦⦑relu⦒(e)⟧⸢γ⸣(x) ⧼≜⧽ Aː[t]l
-                            A⁅ (sˡ′,sʰ′),(rˡ′,rʰ′)
+                            A⁅ s′,(rˡ′,rʰ′)
                             A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
-                                            A⁅ (sˡ,sʰ),(rˡ,rʰ) ⧼=⧽ ⟦e⟧⸢γ⸣(x)
-                                            A⁃ sˡ′ ⧼=⧽ sˡ\frac{⦑relu⦒(rˡ)}{rˡ}
-                                            A⁃ sʰ′ ⧼=⧽ sʰ\frac{⦑relu⦒(rʰ)}{rʰ}
-                                            A⁃ rˡ′ ⧼=⧽ ⦑relu⦒(rˡ)
-                                            A⁃ rʰ′ ⧼=⧽ ⦑relu⦒(rʰ)
+                                            A⁅ s,(rˡ,rʰ) ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                            A⁃ s′ ⧼=⧽ ‘❴Aːl@{␠}l@{␠}l
+                                                        A⁅ 0    & «⟪if⟫» & lᵘ < 0
+                                                        A⁃ s    & «⟪if⟫» & lᵘ ≥ 0
+                                                        A⁆’.
+                                            A⁃ rˡ′ ⧼=⧽ rˡ ⊔ 0
+                                            A⁃ rʰ′ ⧼=⧽ rʰ ⊔ 0
                                             A⁆
                             A⁆
    A⁆
 X⁆
+M⁆
+
+M⁅ -10 ≤ x ≤ 2
+M⁃ ‹sens›(xx) = 20
+M⁃ Aːl
+   A⁅ s₁ = 1
+   A⁃ s₂ = 1
+   A⁃ rˡ₁ = -10
+   A⁃ rʰ₁ = 2
+   A⁃ rˡ₂ = -10
+   A⁃ rʰ₂ = 2
+   A⁆
 M⁆
 
 \bibliographystyle{plainnat}
