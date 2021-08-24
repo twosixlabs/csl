@@ -46,9 +46,9 @@ inputs = [sym.Symbol(f'x_{n}') for n in range(2)]
 # 3 layers, one hidden layer
 # generate the weights
 all_weights = []
-layer1_weights = build_weights(1, 10, 10, all_weights)
-layer2_weights = build_weights(2, 10, 10, all_weights)
-layer3_weights = build_weights(3, 10, 1, all_weights)
+layer1_weights = build_weights(1, 2, 2, all_weights)
+layer2_weights = build_weights(2, 2, 2, all_weights)
+layer3_weights = build_weights(3, 2, 1, all_weights)
 
 # run the network
 layer1_output = run_layer(inputs, layer1_weights)
@@ -91,14 +91,15 @@ print('done substituting, time:', time.process_time() - start_time)
 
 
 def log(m):
-    pass
-    #print(m)
+    #pass
+    print(m)
 
 # recursive analysis for sympy ASTs
 def analyze(e):
     if e.func in [sym.Float, sym.Integer,
-                  sym.core.numbers.NegativeOne,
-                  sym.core.numbers.Half]:
+                  sym.numbers.NegativeOne,
+                  sym.numbers.Half
+    ]:
         log('found constant')
 
     elif e.func == sym.Symbol:
@@ -126,9 +127,83 @@ def analyze(e):
 print('analyzing')
 start_time = time.process_time()
 
-analyze(sym.log(subst))
+analyze(subst)
+#analyze(sym.log(subst))
 print('done analyzing, time:', time.process_time() - start_time)
 
+def add_envs(dict1, dict2):
+    dict3 = {**dict1, **dict2}
+    for key, value in dict3.items():
+        if key in dict1 and key in dict2:
+            dict3[key] = [value , dict1[key]]
+    return dict3
+
+def scale_env(n, dict1):
+    return {k : n * v for k, v in dict1.items()}
+
+def sens(e, i_env):
+    if e.func in [sym.Float, sym.Integer,
+                  sym.numbers.NegativeOne,
+                  sym.numbers.Half,
+                  sym.numbers.One
+    ]:
+        return {}, (e, e)
+
+    elif e.func == sym.Symbol:
+        return {e : 1}, i_env[e]
+
+    elif e.func == sym.Add:
+        e1, e2 = e.args
+
+        s1, i1 = sens(e1, i_env)
+        s2, i2 = sens(e2, i_env)
+
+        rl1, rh1 = i1
+        rl2, rh2 = i2
+
+        s = add_envs(s1, s2)
+
+        rl = rl1 + rl2
+        rh = rh1 + rh2
+
+        return s, (rl, rh)
+
+    elif e.func == sym.Mul:
+        e1, e2 = e.args
+
+        s1, i1 = sens(e1, i_env)
+        s2, i2 = sens(e2, i_env)
+
+        rl1, rh1 = i1
+        rl2, rh2 = i2
+
+        ss1 = scale_env(max(abs(rl2), abs(rh2)), s1)
+        ss2 = scale_env(max(abs(rl1), abs(rh1)), s2)
+        s = add_envs(ss1, ss2)
+
+        rl = min(rl1*rl2, rl1*rh2, rh1*rl2, rh1*rh2)
+        rh = max(rl1*rl2, rl1*rh2, rh1*rl2, rh1*rh2)
+
+        return s, (rl, rh)
+
+
+    elif e.func == sym.Pow:
+        log('found pow')
+        [analyze(a) for a in e.args]
+
+    elif e.func == Relu:
+        log('found relu')
+        [analyze(a) for a in e.args]
+
+    else:
+        log('found unknown type' + str(e.func))
+
+
+tx = sym.Symbol('x')
+ty = sym.Symbol('y')
+
+print(sens(tx * ty, {tx : (0, 1), ty : (0, 1)}))
+        
 # for x in inputs:
 #     print(f'immediate sensitivity wrt {x}: {subst}')
 #     print(f'log of immediate sensitivity wrt {x}: {sym.simplify(sym.log(subst))}')
