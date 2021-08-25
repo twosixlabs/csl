@@ -68,7 +68,7 @@ inner_gradient = [sym.diff(loss, w) for w in all_weights]
 inner_norm = L1_norm(inner_gradient)
 outer_gradient = [sym.diff(inner_norm, x) for x in inputs]
 outer_norm = L1_norm(outer_gradient)
-immediate_sensitivity = outer_norm
+immediate_sensitivity = sym.Abs(outer_norm)
 
 print('done constructing, time:', time.process_time() - start_time)
 
@@ -149,6 +149,16 @@ def sens(e, i_env):
                   sym.numbers.One
     ]:
         return {}, (e, e)
+
+    elif e.func == sym.Abs:
+        assert len(e.args) == 1
+        s, i = sens(e.args[0], i_env)
+        rl, rh = i
+
+        rl_prime = max(rl, 0)
+        rh_prime = max(rh, 0)
+
+        return s, (rl_prime, rh_prime)
 
     elif e.func == sym.Symbol:
         if e in i_env:
