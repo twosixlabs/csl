@@ -1,5 +1,6 @@
 import time
 
+import numpy as np
 import sympy as sym
 from functools import reduce
 
@@ -64,9 +65,9 @@ loss = (pred_exp - label)**2
 
 # calculate immediate sensitivity
 inner_gradient = [sym.diff(loss, w) for w in all_weights]
-inner_norm = L2_norm(inner_gradient)
+inner_norm = L1_norm(inner_gradient)
 outer_gradient = [sym.diff(inner_norm, x) for x in inputs]
-outer_norm = L2_norm(outer_gradient)
+outer_norm = L1_norm(outer_gradient)
 immediate_sensitivity = outer_norm
 
 print('done constructing, time:', time.process_time() - start_time)
@@ -77,10 +78,10 @@ start_time = time.process_time()
 # substitute in actual values for the weights
 weight_vals = [1.0 for w in all_weights]
 subst = immediate_sensitivity
-# for w_name, w_val in zip(all_weights, weight_vals):
-#     subst = subst.subs(w_name, w_val)
+for w_name, w_val in zip(all_weights, weight_vals):
+    subst = subst.subs(w_name, w_val)
 
-# subst = subst.subs(label, 1)
+subst = subst.subs(label, 1)
 
 ivl = sym.Interval(-1,1)
 
@@ -135,7 +136,7 @@ def add_envs(dict1, dict2):
     dict3 = {**dict1, **dict2}
     for key, value in dict3.items():
         if key in dict1 and key in dict2:
-            dict3[key] = [value , dict1[key]]
+            dict3[key] = value + dict1[key]
     return dict3
 
 def scale_env(n, dict1):
@@ -150,21 +151,18 @@ def sens(e, i_env):
         return {}, (e, e)
 
     elif e.func == sym.Symbol:
-        return {e : 1}, i_env[e]
+        if e in i_env:
+            return {e : 1}, i_env[e]
+        else:
+            return {e : 1}, (0, 1) # dangerous default
 
     elif e.func == sym.Add:
-        e1, e2 = e.args
+        all_ss, all_is = zip(*[sens(a, i_env) for a in e.args])
+        s = reduce(add_envs, all_ss)
 
-        s1, i1 = sens(e1, i_env)
-        s2, i2 = sens(e2, i_env)
-
-        rl1, rh1 = i1
-        rl2, rh2 = i2
-
-        s = add_envs(s1, s2)
-
-        rl = rl1 + rl2
-        rh = rh1 + rh2
+        all_rls, all_rhs = zip(*all_is)
+        rl = np.sum(all_rls)
+        rh = np.sum(all_rhs)
 
         return s, (rl, rh)
 
@@ -189,20 +187,35 @@ def sens(e, i_env):
 
     elif e.func == sym.Pow:
         log('found pow')
+        print(e)
+        raise 5
         [analyze(a) for a in e.args]
 
     elif e.func == Relu:
-        log('found relu')
-        [analyze(a) for a in e.args]
+        assert len(e.args) == 1
+        s, i = sens(e.args[0], i_env)
+        rl, rh = i
+
+        if rl < 0:
+            s_prime = {k : 0 for k in s.keys()}
+        else:
+            s_prime = s
+
+        rl_prime = max(rl, 0)
+        rh_prime = max(rh, 0)
+
+        return s_prime, (rl_prime, rh_prime)
 
     else:
         log('found unknown type' + str(e.func))
+        raise 5
 
 
 tx = sym.Symbol('x')
 ty = sym.Symbol('y')
 
 print(sens(tx * ty, {tx : (0, 1), ty : (0, 1)}))
+print(sens(subst, {}))
         
 # for x in inputs:
 #     print(f'immediate sensitivity wrt {x}: {subst}')
