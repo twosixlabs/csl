@@ -419,6 +419,54 @@ M⁃ Aːl
    A⁆
 M⁆
 
+\section{Enforcing Smoothing}
+
+The «immediate sensitivity» is defined as:
+M⁅ «𝐈𝐒»⸤𝐱,𝛉⸥(f) Aː[t]rcl
+                  A⁅ ⧼≜⧽ ‖ ∇⸤𝐱⸥ ‖ ∇⸤𝛉⸥ L⸤f⸤𝛉⸥⸥(𝐱,y) ‖₂ ‖₂
+                  A⁆
+M⁆
+
+\begin{itemize}
+\item Minibatch is ⸨\bar{x}, \bar{y}⸩ of length ⸨n⸩, with input size ⸨m⸩
+\item Aggregate loss is ⸨L⸤f⸤θ⸥⸥(\bar{x},\bar{y})⸩
+\item Aggregate gradient is ⸨∇⸤θ⸥ L⸤f⸤𝛉⸥⸥(\bar{x},\bar{y})⸩, a vector of length ⸨|θ|⸩ (one element per model weight)
+\item Per-feature immediate sensitivity is ⸨∇⸤\bar{x}⸥ ‖ ∇⸤θ⸥ L⸤f⸤𝛉⸥⸥(\bar{x},\bar{y}) ‖₂⸩, a matrix of size ⸨m × n⸩ (one sensitivity value per feature)
+\item Per-example immediate sensitivity is the row-wise ⸨L₂⸩ norm of the above (how do you write this?), something like ⸨ ‖ ∇⸤\bar{x}⸥ ‖ ∇⸤θ⸥ L⸤f⸤𝛉⸥⸥(\bar{x},\bar{y}) ‖₂ ‖₂ ⸩, a vector of length ⸨n⸩ (one sensitivity per example in the minibatch)
+  \begin{itemize}
+  \item Each per-example sensitivity describes the change in the aggregate gradient if you modify that example
+  \item Worst-case local sensitivity is the max of these
+  \end{itemize}
+\end{itemize}
+
+\paragraph{Enforcing smoothing.}
+If we have an upper bound on ⸨LS⸤f⸥(x)⸩ then we can \emph{construct} a
+smooth upper bound. From~\cite{smooth-sensitivity}, ⸨S⸢*⸣⸩ is
+⸨t⸩-smooth if we construct it like this:
+%
+M⁅ S⸢*⸣⸤f,t⸥ (x) = \max⸤y ∈ 𝒟ⁿ⸥ LS⸤f⸥(y) ⋅ \exp(-t ␣d(x, y))
+M⁆
+
+\paragraph{Conjecture:} the total change in the gradient if we modify
+⸨k ≤ n⸩ examples in the minibatch is upper-bounded by the sum of their
+individual local sensitivities. This is because the aggregate gradient
+is the average of the individual gradients. In the worst case, if we
+change ⸨k⸩ examples, all of the resulting changes to the gradient go
+``in the same direction'' and change the average by their sum.
+
+
+If the conjecture is true, then I think this is an upper bound on ⸨S⸢*⸣⸩:
+
+\begin{verbatim}
+For all k ∈ 0 ... n:
+  Take the largest k local sensitivities from the vector above
+  Add them up to get an upper bound on LS_f(y)
+  Multiply by exp(-tk)
+Take the max of all of these
+\end{verbatim}
+
+Unfortunately this gives us an extra parameter to tune (⸨t⸩).
+
 \bibliographystyle{plainnat}
 \bibliography{local}
 
