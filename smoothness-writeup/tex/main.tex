@@ -467,6 +467,26 @@ Take the max of all of these
 
 Unfortunately this gives us an extra parameter to tune (⸨t⸩).
 
+\paragraph{Claim:} If ⸨S⸩ is a ML-⸨β⸩-smooth upper bound on local
+sensitivity, then we can bound the local sensitivity at distance ⸨k⸩.
+%
+M⁅ d(x,y) ≤ 1 ⇒ S(x) + β ≥ S(y)
+M⁃ d(y,z) ≤ 1 ⇒ S(y) + β ≥ S(z)
+M⁃ d(x,z) ≤ 2 ⇒ S(x) + 2β ≥ S(z)␠ ⟪(substituting)⟫
+M⁆
+%
+Apply this ⸨k⸩ times, you get the general result:
+%
+M⁅ d(x, y) ≤ k ⇒ S(x) + kβ ≥ S(y)
+M⁆
+
+So we can define the DP-⸨t⸩-smooth upper bound (where ⸨n⸩ is minibatch size
+and ⸨S⸩ is ML-⸨β⸩-smooth):
+%
+M⁅ S⸢*⸣⸤f,t⸥ (x) = \max⸤k ∈ ❴0…n❵⸥ (S(x) + kβ) ⋅ \exp(-tk)
+M⁆
+
+
 \bibliographystyle{plainnat}
 \bibliography{local}
 
