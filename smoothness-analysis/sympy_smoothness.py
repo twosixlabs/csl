@@ -33,6 +33,19 @@ class Relu(sym.Function):
         else:
             return 0
 
+class L2Norm(sym.Function):
+    def eval(x):
+        print('got to eval', x)
+        return 1
+
+    def fdiff(self, x):
+        print('got to fdiff')
+        print(x)
+        if x > 0:
+            return 1
+        else:
+            return 0
+
 def run_relu(inputs):
     return [Relu(x) for x in inputs]
 
@@ -47,9 +60,9 @@ inputs = [sym.Symbol(f'x_{n}') for n in range(2)]
 # 3 layers, one hidden layer
 # generate the weights
 all_weights = []
-layer1_weights = build_weights(1, 2, 2, all_weights)
-layer2_weights = build_weights(2, 2, 2, all_weights)
-layer3_weights = build_weights(3, 2, 1, all_weights)
+layer1_weights = build_weights(1, 3, 3, all_weights)
+layer2_weights = build_weights(2, 3, 3, all_weights)
+layer3_weights = build_weights(3, 3, 1, all_weights)
 
 # run the network
 layer1_output = run_layer(inputs, layer1_weights)
@@ -65,10 +78,10 @@ loss = (pred_exp - label)**2
 
 # calculate immediate sensitivity
 inner_gradient = [sym.diff(loss, w) for w in all_weights]
-inner_norm = L1_norm(inner_gradient)
+inner_norm = L2Norm(inner_gradient)
 outer_gradient = [sym.diff(inner_norm, x) for x in inputs]
-outer_norm = L1_norm(outer_gradient)
-immediate_sensitivity = sym.Abs(outer_norm)
+outer_norm = L2Norm(outer_gradient)
+immediate_sensitivity = outer_norm
 
 print('done constructing, time:', time.process_time() - start_time)
 
@@ -76,14 +89,21 @@ print('substituting')
 start_time = time.process_time()
 
 # substitute in actual values for the weights
-weight_vals = [1.0 for w in all_weights]
+weight_vals = [.1 for w in all_weights]
 subst = immediate_sensitivity
 for w_name, w_val in zip(all_weights, weight_vals):
     subst = subst.subs(w_name, w_val)
 
 subst = subst.subs(label, 1)
+print('Immediate sensitivity:', subst)
+#ivl = sym.Interval(-1,1)
 
-ivl = sym.Interval(-1,1)
+ggs_is = [sym.diff(subst, x) for x in inputs]
+print()
+print('GS of immediate sensitivity:', L1_norm(ggs_is))
+
+
+exit()
 
 # print(sym.log(subst))
 # print(sym.srepr(subst))
@@ -128,7 +148,7 @@ def analyze(e):
 print('analyzing')
 start_time = time.process_time()
 
-analyze(subst)
+#analyze(subst)
 #analyze(sym.log(subst))
 print('done analyzing, time:', time.process_time() - start_time)
 
@@ -196,6 +216,12 @@ def sens(e, i_env):
 
 
     elif e.func == sym.Pow:
+        assert len(e.args) == 2
+        s, i = sens(e.args[0], i_env)
+        rl, rh = i
+
+        return s, (rl, rh)
+
         log('found pow')
         print(e)
         raise 5
