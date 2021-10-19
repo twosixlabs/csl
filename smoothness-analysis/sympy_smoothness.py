@@ -19,28 +19,66 @@ def build_weights(layer_num, input_size, width, all_weights):
     weights = []
     for i in range(width):
         w = [sym.Symbol(f'w{layer_num}_{i}_{j}') for j in range(input_size)]
+        w.append(sym.Symbol(f'b{layer_num}_{i}' ))
         weights.append(w)
         all_weights.extend(w)
     return weights
 
 def run_layer(inputs, weights):
-    return [dot_product(inputs, w_row) for w_row in weights]
+    return [dot_product(inputs, w_row[:-1]) + w_row[-1] for w_row in weights]
 
 # TODO: this might be broken because it doesn't have an "eval" method
-class Relu(sym.Function):
+class ReluDiff(sym.Function):
+    @classmethod
+    def eval(cls, x):
+        if x.is_Number:
+            if x > 0:
+                return 1
+            else:
+                return 0
+
     def fdiff(self, x):
-        if x > 0:
-            return 1
-        else:
-            return 0
+        return 0
+
+
+class AbsDiff(sym.Function):
+    @classmethod
+    def eval(cls, x):
+        if x.is_Number:
+            if x > 0:
+                return 1
+            else:
+                return -1
+
+    def fdiff(self, x):
+        return 0
+
+
+class Relu(sym.Function):
+    @classmethod
+    def eval(cls, x):
+        if x.is_Number:
+            if x > 0:
+                return x
+            else:
+                return 0
+        
+
+    def fdiff(self, x):
+        return ReluDiff(x)
 
 # TODO: this might be broken because it doesn't have an "eval" method
 class MyAbs(sym.Function):
+    @classmethod
+    def eval(cls, x):
+        if x.is_Number:
+            if x > 0:
+                return x
+            else:
+                return -x
+
     def fdiff(self, x):
-        if x > 0:
-            return 1
-        else:
-            return -1
+        return AbsDiff(x)
 
 class L2Norm(sym.Function):
     def eval(x):
@@ -58,6 +96,17 @@ class L2Norm(sym.Function):
 def run_relu(inputs):
     return [Relu(x) for x in inputs]
 
+
+def arg_set(expr):
+    exp_set = set()
+    if len(expr.args) == 0:
+        if expr.is_Symbol:
+            exp_set.add(expr)
+            return exp_set
+    for ag in expr.args:
+        exp_set = exp_set.union(arg_set(ag))
+    return exp_set
+
 sym.init_printing(use_unicode=True)
 
 print('constructing')
@@ -69,9 +118,10 @@ inputs = [sym.Symbol(f'x_{n}') for n in range(2)]
 # 3 layers, one hidden layer
 # generate the weights
 all_weights = []
-layer1_weights = build_weights(1, 2, 1, all_weights)
-layer2_weights = build_weights(2, 1, 1, all_weights)
-layer3_weights = build_weights(3, 1, 1, all_weights)
+layer1_weights = build_weights(1, 5, 5, all_weights)
+layer2_weights = build_weights(2, 5, 5, all_weights)
+layer3_weights = build_weights(3, 5, 5, all_weights)
+layer4_weights = build_weights(4, 5, 1, all_weights)
 
 # run the network
 layer1_output = run_layer(inputs, layer1_weights)
@@ -79,10 +129,12 @@ layer1_relu   = run_relu (layer1_output)
 layer2_output = run_layer(layer1_relu, layer2_weights)
 layer2_relu   = run_relu (layer2_output)
 layer3_output = run_layer(layer2_relu, layer3_weights)
+layer3_relu   = run_relu (layer3_output)
+layer4_output = run_layer(layer3_relu, layer4_weights)
 
 # calculate the loss
 label = sym.Symbol('y')
-pred_exp = reduce(lambda x, y: x + y, layer3_output, 0)
+pred_exp = reduce(lambda x, y: x + y, layer4_output, 0)
 loss = (pred_exp - label)**2
 
 # calculate immediate sensitivity
@@ -98,6 +150,9 @@ print('substituting')
 start_time = time.process_time()
 
 subst = L1_norm([sym.diff(immediate_sensitivity, x) for x in inputs])
+ags = arg_set(subst)
+print(f"dependent inputs: {ags.intersection(set(inputs))}")
+exit()
 
 print(f"def get_c({','.join([str(w) for w  in all_weights])}):")
 print(  'return ' + str(subst))
