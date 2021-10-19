@@ -120,8 +120,7 @@ inputs = [sym.Symbol(f'x_{n}') for n in range(2)]
 all_weights = []
 layer1_weights = build_weights(1, 5, 5, all_weights)
 layer2_weights = build_weights(2, 5, 5, all_weights)
-layer3_weights = build_weights(3, 5, 5, all_weights)
-layer4_weights = build_weights(4, 5, 1, all_weights)
+layer3_weights = build_weights(3, 5, 1, all_weights)
 
 # run the network
 layer1_output = run_layer(inputs, layer1_weights)
@@ -129,12 +128,10 @@ layer1_relu   = run_relu (layer1_output)
 layer2_output = run_layer(layer1_relu, layer2_weights)
 layer2_relu   = run_relu (layer2_output)
 layer3_output = run_layer(layer2_relu, layer3_weights)
-layer3_relu   = run_relu (layer3_output)
-layer4_output = run_layer(layer3_relu, layer4_weights)
 
 # calculate the loss
 label = sym.Symbol('y')
-pred_exp = reduce(lambda x, y: x + y, layer4_output, 0)
+pred_exp = reduce(lambda x, y: x + y, layer3_output, 0)
 loss = (pred_exp - label)**2
 
 # calculate immediate sensitivity
@@ -149,19 +146,24 @@ print('done constructing, time:', time.process_time() - start_time)
 print('substituting')
 start_time = time.process_time()
 
-subst = L1_norm([sym.diff(immediate_sensitivity, x) for x in inputs])
-ags = arg_set(subst)
-print(f"dependent inputs: {ags.intersection(set(inputs))}")
-exit()
+is_args = arg_set(immediate_sensitivity)
 
-print(f"def get_c({','.join([str(w) for w  in all_weights])}):")
-print(  'return ' + str(subst))
+is_diff = L1_norm([sym.diff(immediate_sensitivity, x) for x in inputs])
+ags = arg_set(is_diff)
+
+#print(subst)
+print(f"dependent inputs: {ags.intersection(set(inputs))}")
+
+#print(f"def get_c({','.join([str(w) for w  in all_weights])}):")
+#print(  'return ' + str(subst))
 
 # substitute in actual values for the weights
 weight_vals = [.1 for w in all_weights]
-#subst = immediate_sensitivity
+subst = immediate_sensitivity
 for w_name, w_val in zip(all_weights, weight_vals):
     subst = subst.subs(w_name, w_val)
+    is_diff = is_diff.subs(w_name, w_val)
+
 
 subst = subst.subs(label, 1)
 print('Immediate sensitivity:', subst)
@@ -173,9 +175,10 @@ ggs_is = [sym.diff(subst, x) for x in inputs]
 print()
 print('GS of immediate sensitivity:', ggs_is)
 print('GS of immediate sensitivity:', L1_norm(ggs_is))
-print(inputs)
+print('symbolic gs: ', is_diff)
 
-print(weight_vals)
+
+
 
 exit()
 
