@@ -487,6 +487,108 @@ M⁅ S⸢*⸣⸤f,t⸥ (x) = \max⸤k ∈ ❴0…n❵⸥ (S(x) + kβ) ⋅ \exp(-
 M⁆
 
 
+\section{Attempt 10/21/2021}
+
+
+\begin{definition}[Local Sensitivity \citep{smooth-sensitivity}]
+  The Local Sensitivity of ⸨f⸩ at ⸨x⸩ is ⸨«LS»⸤f⸥(x)⸩ where:
+  M⁅ X⁅ ⩊ «LS»⸤f⸥(x) ≜ \max\limits⸤y:‖x-y‖=1⸥ ‖ f(x) - f(y) ‖₁
+        ⩊ ⟪\citep[§ 1.3, Definition 1.6]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: ⸨‖x-y‖⸩ is an abstract distance but ⸨‖ f(x) - f(y) ‖₁⸩  is
+  specifically L1 distance.
+\end{definition}
+%
+Define ⸨G⸤θ⸥(x)⸩ to be the gradient of the loss at ⸨x⸩ with weights
+⸨θ⸩. The local sensitivity of the gradient is:
+%
+M⁅ «LS»⸤G⸤θ⸥⸥(x) = \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) - G⸤θ⸥(y) ‖₂
+M⁆
+
+\begin{theorem}[Option \#1]
+  If we clip inputs ⸨x⸩ such that ⸨‖x‖ ≤ 1⸩, then:
+  M⁅ «LS»⸤G⸤θ⸥⸥(x) ≤ ‖ G⸤θ⸥(x) ‖₂ + \max\limits⸤y:‖y‖≤1⸥ ‖ G⸤θ⸥(y) ‖₂ M⁆
+  We can maximize using SHGO but this bound might be very loose.
+\end{theorem}
+
+\begin{proof}
+  M⁅ Aːlcl@{␠}l
+  A⁅ «LS»⸤G⸤θ⸥⸥(x) ⧼=⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) - G⸤θ⸥(y) ‖₂
+     A⁃ ⧼≤⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) ‖₂ + ‖ -G⸤θ⸥(y) ‖₂ & ⟅triangle inequality⟆
+     A⁃ ⧼=⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) ‖₂ + ‖ G⸤θ⸥(y) ‖₂ & ⟅vector negation, norm⟆
+     A⁃ ⧼=⧽ ‖ G⸤θ⸥(x) ‖₂ + \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(y) ‖₂ & ⟅def ⸨\max⸩, algebra⟆
+     A⁃ ⧼=⧽ ‖ G⸤θ⸥(x) ‖₂ + \max\limits⸤y:‖y‖≤1⸥ ‖ G⸤θ⸥(y) ‖₂ & ⟅clipping⟆
+     A⁆
+  M⁆
+\end{proof}
+
+
+\begin{definition}[Gradient function]
+  Let ⸨G⸤θ⸥(x) ⦂ ℝⁿ → ℝᵐ⸩ be the gradient of the loss wrt weights ⸨θ⸩
+  for a single example ⸨x⸩, and ⸨G⸤θ⸥(x)ᵢ ⦂ ℝⁿ → ℝ⸩ be the ⸨i⸩th
+  element of the gradient vector.
+\end{definition}
+
+\begin{definition}[Per-feature Immediate Sensitivity]
+  Let ⸨«IS»ᵢ(x) ⦂ ℝⁿ → ℝ ≜ ‖∇ (G⸤θ⸥(x)ᵢ)‖₂⸩.
+\end{definition}
+
+\begin{lemma}
+  \label{lemma:lipschitz}
+  If ⸨«IS»ᵢ⸩ is ⸨C⸩-Lipschitz (⸨«A1»⸩) and ⸨∀c ⍪ ‖x-c‖₂ ≤ 1⸩ (⸨«A2»⸩)
+  then:
+  %
+  M⁅ ∀ c, x ⍪ ‖x-c‖₂ ≤ 1 ⇒ «IS»ᵢ(c) ≤ «IS»ᵢ(x) + C M⁆
+  %M⁅ \max\limits⸤c⸥ «IS»ᵢ(c) ≤ «IS»ᵢ(x) + C M⁆
+\end{lemma}
+
+\begin{proof}
+  %
+  M⁅ Aːlcl@{␠}l
+  A⁅ «IS»ᵢ(c) ⧼=⧽ «IS»ᵢ(c) + «IS»ᵢ(x) - «IS»ᵢ(x) & ⟅algebra⟆
+  A⁃ ⧼=⧽ «IS»ᵢ(x) + «IS»ᵢ(c) - «IS»ᵢ(x) & ⟅algebra⟆
+  A⁃ ⧼≤⧽ «IS»ᵢ(x) + | «IS»ᵢ(c) - «IS»ᵢ(x) | & ⟅algebra⟆
+  A⁃ ⧼≤⧽ «IS»ᵢ(x) + C & ⟅⸨«A1», «A2»⸩⟆
+  A⁆
+  M⁆
+\end{proof}
+
+\begin{theorem}[Option \#2]
+  If ⸨«IS»(x)⸩ is ⸨(C₁, …, Cₘ)⸩-Lipschitz, then:
+  M⁅ «LS»⸤G⸤θ⸥⸥(x) ≤ ‖ «IS»(x) + \Big(  C₁, …, Cₘ \Big) ‖₂ M⁆
+\end{theorem}
+
+\begin{proof}
+  %
+  M⁅ Aːlcl@{␠}l
+  A⁅ «LS»⸤G⸤θ⸥⸥(x) ⧼=⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) - G⸤θ⸥(y) ‖₂
+  A⁃ ⧼=⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ \Big( G⸤θ⸥(x)₁ - G⸤θ⸥(y)₁, …, G⸤θ⸥(x)ₘ - G⸤θ⸥(y)ₘ \Big) ‖₂
+  & ⟅def of vector minus⟆
+  A⁃ ⧼≤⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ \Big( \max\limits⸤c₁⸥ ‖∇ (G⸤θ⸥(c₁)₁)‖₂, …,
+  \max\limits⸤cₘ⸥ ‖∇ (G⸤θ⸥(cₘ)ₘ)‖₂ \Big) ‖₂
+  & ⟅mean value theorem⟆
+  A⁃ ⧼=⧽ ‖ \Big( \max\limits⸤c₁⸥ ‖∇ (G⸤θ⸥(c₁)₁)‖₂, …,
+  \max\limits⸤cₘ⸥ ‖∇ (G⸤θ⸥(cₘ)ₘ)‖₂ \Big) ‖₂
+  & ⟅def ⸨\max⸩⟆
+  A⁃ ⧼=⧽ ‖ \Big( \max\limits⸤c₁⸥ «IS»₁(c₁), …,
+  \max\limits⸤cₘ⸥ «IS»ₘ(cₘ) \Big) ‖₂
+  & ⟅def ⸨«IS»⸩⟆
+  A⁃ ⧼≤⧽ ‖ \Big( «IS»₁(x) + C₁, …,
+  «IS»ₘ(x) + Cₘ \Big) ‖₂
+  & ⟅Lemma~\ref{lemma:lipschitz}⟆
+  A⁃ ⧼=⧽ ‖ \Big( «IS»₁(x) , …,
+  «IS»ₘ(x) \Big) +
+  \Big(  C₁, …,
+  Cₘ \Big)‖₂
+  & ⟅algebra⟆
+  A⁃ ⧼=⧽ ‖ «IS»(x) +
+  \Big(  C₁, …, Cₘ \Big) ‖₂
+  & ⟅algebra⟆
+  A⁆
+  M⁆
+\end{proof}
+
 \bibliographystyle{plainnat}
 \bibliography{local}
 
