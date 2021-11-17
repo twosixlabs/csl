@@ -46,5 +46,6 @@ s/↘/\\shortsearrow{}/g
 
 s/⋃/⋃\\limits/g
 s/⨆/⨆\\limits/g
+s/⨅/⨅\\limits/g
 s/∑/∑\\limits/g
 s/∏/∏\\limits/g

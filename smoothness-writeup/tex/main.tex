@@ -589,6 +589,82 @@ M⁆
   M⁆
 \end{proof}
 
+
+\section{Pure Interval Analysis}
+
+M⁅
+X⁅ Aːrcl
+   A⁅ ⟦‗⟧⸢‗⸣            ⧼∈⧽ ‹exp› × (‹var› → ℝ × ℝ) → (ℝ × ℝ)
+   A⁃ ⟦r⟧⸢γ⸣            ⧼≜⧽ ⟨r,r⟩
+   A⁃ ⟦x⟧⸢γ⸣            ⧼≜⧽ γ(x)
+   A⁃ ⟦e₁+⋯+eₙ⟧⸢γ⸣      ⧼≜⧽ Aː[t]l
+                            A⁅ ⟨r₁,r₂⟩
+                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                            A⁅ ⟨r₁₁,r₁₂⟩ ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
+                                            A⁃           ⧼⋮⧽
+                                            A⁃ ⟨rₙ₁,rₙ₂⟩ ⧼=⧽ ⟦eₙ⟧⸢γ⸣(x)
+                                            A⁃ r₁        ⧼=⧽ r₁₁ + ⋯ + rₙ₁
+                                            A⁃ r₂        ⧼=⧽ r₁₂ + ⋯ + rₙ₂
+                                            A⁆
+                            A⁆
+   A⁃ ⟦e₁×⋯×eₙ⟧⸢γ⸣      ⧼≜⧽ Aː[t]l
+                            A⁅ ⟨r₁,r₂⟩
+                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                            A⁅ ⟨r₁₁,r₁₂⟩ ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
+                                            A⁃           ⧼⋮⧽
+                                            A⁃ ⟨rₙ₁,rₙ₂⟩ ⧼=⧽ ⟦eₙ⟧⸢γ⸣(x)
+                                            A⁃ r₁ ⧼=⧽ ⨅ᵢⱼ rᵢ₁rⱼ₂
+                                            A⁃ r₂ ⧼=⧽ ⨆ᵢⱼ rᵢ₁rⱼ₂
+                                            A⁆
+                            A⁆
+   A⁃ ⟦eⁿ⟧                ⧼≜⧽ Aː[t]l
+                              A⁅ ⟨1,1⟩
+                              A⁃ ␠⟪«where»⟫ ␠ n=0
+                              A⁆
+   A⁃ ⟦eⁿ⟧                ⧼≜⧽ Aː[t]l
+                              A⁅ ⟨r₁′,r₂′⟩
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ 𝑚𝑐3l{‹odd›(n)}
+                                              A⁃ ⟨r₁,r₂⟩ ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ r₁′ ⧼=⧽ r₁ⁿ
+                                              A⁃ r₂′ ⧼=⧽ r²ⁿ
+                                              A⁆
+                              A⁆
+   A⁃ ⟦eⁿ⟧                ⧼≜⧽ Aː[t]l
+                              A⁅ ⟨r₁″,r₂′⟩
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ 𝑚𝑐3l{‹even›(n)}
+                                              A⁃ n   ⧼≥⧽ 2
+                                              A⁃ ⟨r₁,r₂⟩ ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ r₁′ ⧼=⧽ r₁ⁿ ⊓ r₂ⁿ
+                                              A⁃ r₁″ ⧼=⧽ ‘❴Aːl@{␠}c@{␠}l
+                                                           A⁅ 0   & «if» & r₁ < 0 < r₂
+                                                           A⁃ r₁′ & «if» & r₂ < 0 ␠«or»␠ 0 < r₁
+                                                           A⁆’.
+                                              A⁃ r₂′ ⧼=⧽ r₁ⁿ ⊔ r₂ⁿ
+                                              A⁆
+                              A⁆
+   A⁃ ⟦⦑ln⦒(e)⟧⸢γ⸣(x)         ⧼≜⧽ Aː[t]l
+                              A⁅ ⟨r₁′,r₂′⟩
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ ⟨r₁,r₂⟩ ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ r₁′ ⧼=⧽ ㏑r₁
+                                              A⁃ r₂′ ⧼=⧽ ㏑r₂
+                                              A⁆
+                            A⁆
+   A⁃ ⟦⦑relu⦒(e)⟧⸢γ⸣(x) ⧼≜⧽ Aː[t]l
+                            A⁅ ⟨r₁′,r₂′⟩
+                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                            A⁅ ⟨r₁,r₂⟩ ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                            A⁃ r₁′ ⧼=⧽ ‹relu›(r₁)
+                                            A⁃ r₂′ ⧼=⧽ ‹relu›(r₂)
+                                            A⁆
+                            A⁆
+   A⁆
+X⁆
+M⁆
+
+
 \bibliographystyle{plainnat}
 \bibliography{local}
 
