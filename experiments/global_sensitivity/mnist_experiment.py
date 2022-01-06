@@ -65,7 +65,7 @@ for BATCH_SIZE in [512, 1024, 2048, 4096]:
     for epochs in [15, 25, 40, 100]:
         for grad_clip in [0.00001, 0.0001, 0.001, 0.01, 0.1]:
             for inp_clip in [0.1, 1, 5, 10]:
-                for rho_i in []
+                for rho_i in [0.00001, 0.00005, 0.0001]
                     model, info = uc.run_experiment(Classifier(), 
                                                 train_loader,
                                                 rho_i,
@@ -74,6 +74,6 @@ for BATCH_SIZE in [512, 1024, 2048, 4096]:
                                                 grad_clip
                                             )
                     tl, correct, set_len = test(model, test_loader)
-                    
+                    print(f'MNIST_{BATCH_SIZE}_{epochs}_{grad_clip}_{inp_clip}_{rho_i}', correct/set_len)
                     pickle.dump((info, tl, correct), open(f'MNIST_{BATCH_SIZE}_{epochs}_{grad_clip}_{inp_clip}_{rho_i}.p', 'wb'))
                 

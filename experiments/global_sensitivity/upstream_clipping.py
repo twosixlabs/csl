@@ -6,9 +6,6 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 
-torch.manual_seed(1)
-np.random.seed(7)
-
 import time
 
 
