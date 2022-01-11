@@ -65,7 +65,7 @@ for BATCH_SIZE in [512, 1024, 2048, 4096]:
     for epochs in [15, 25, 40, 100]:
         for grad_clip in [0.00001, 0.0001, 0.001, 0.01, 0.1]:
             for inp_clip in [0.1, 1, 5, 10]:
-                for rho_i in [0.00001, 0.00005, 0.0001]
+                for rho_i in [0.00001, 0.00005, 0.0001]:
                     model, info = uc.run_experiment(Classifier(), 
                                                 train_loader,
                                                 rho_i,

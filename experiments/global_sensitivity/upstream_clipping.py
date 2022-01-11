@@ -80,7 +80,7 @@ def zcdp_eps(rho, delta):
     return rho + 2*np.sqrt(rho*np.log(1/delta))
 
 
-def run_experiment(model, train_loader, rho_i, epochs, input_bound, grad_bound, optimizer=optim.Adam(model.parameters(), lr=0.01)):
+def run_experiment(model, train_loader, rho_i, epochs, input_bound, grad_bound):
     model.to('cuda')
     #model.network.to('cuda')
     model_criterion = nn.NLLLoss()
@@ -111,7 +111,7 @@ def run_experiment(model, train_loader, rho_i, epochs, input_bound, grad_bound, 
     
     model.train()
     # sensitivity for everything with weights is just:
-    sensitivity = INPUT_BOUND * UPSTREAM_GRAD_BOUND / BATCH_SIZE
+    sensitivity = input_bound * grad_bound / train_loader.batch_size
     sigma = np.sqrt(sensitivity**2 / (2*rho_i))
     print('sensitivity:', sensitivity)
     
