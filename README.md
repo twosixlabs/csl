@@ -19,7 +19,7 @@ Research code and current experimentation that hasn't been formally added to the
 
 ## Attack Execution
 
-The attack script attack.py performs the adapted conditional Hayes attack on
+The attack script `attack.py` performs the adapted conditional Hayes attack on
 conditional MNIST GANs and the standard Hayes attack on unconditional CelebA
 WGANs developed by Two Six Technologies as part of DARPA's CSL program.
 
