@@ -103,38 +103,37 @@ def gaussian_pdf(sd, x):
         return np.e ** (-0.5 * (x / sd) ** 2) / sd
 
 
-def membership_inf(model, avg_train_loss, inputs, labels, lf=nn.MSELoss):
-    inp = Variable(inputs, requires_grad=False)
-    inp = inp.to(torch.cuda.current_device())
-    with torch.no_grad():
-        outputs = model.forward(inp)
-        labels = labels.to(torch.cuda.current_device())
-        loss = lf(reduction='none')(torch.squeeze(outputs), labels)
+def membership_inf(model, avg_train_loss, inputs, labels, lf=nn.MSELoss(reduction='none')):
+    inputs = inputs.to(torch.cuda.current_device())
+    outputs = model.forward(inputs)
+    labels = labels.to(torch.cuda.current_device())
+    loss = lf(torch.squeeze(outputs), labels)
+    loss = [l.item() for l in loss]
     pass_inf = [1 if abs(l) < avg_train_loss else 0 for l in loss]
 
-    return pass_inf, [float(l) for l in loss]
+    return pass_inf
 
 
-def run_membership_inference_attack(model, avg_train_l, X_target, y_target, lf=nn.MSELoss):
+def run_membership_inference_attack(model, avg_train_l, X_target, y_target, lf=nn.MSELoss(reduction='none')):
     if type(X_target) == np.ndarray:
         X_target = torch.from_numpy(X_target).float()
     if type(y_target) == np.ndarray:
         y_target = torch.from_numpy(y_target).float()
 
-    pass_inf, train_loss = membership_inf(model,
-                                          avg_train_l,
-                                          X_target,
-                                          y_target, lf)
-    #plt.scatter(paws, pass_inf)
-    #print('positive ratio:',sum(pass_inf)/len(pass_inf))
+    pass_inf = membership_inf(model,
+                              avg_train_l,
+                              X_target,
+                              y_target, lf)
     return sum(pass_inf)/len(pass_inf)
 
 def run_yeom_loader(model, avg_train_l, loader, lf=nn.MSELoss, num_batches=None):
     ratios = []
-    for i, (inputs, labels) in enumerate(loader):
-        if (num_batches is not None) and i >= num_batches:
-            break
-        torch.cuda.empty_cache()
-        ratios.append(run_membership_inference_attack(model, avg_train_l, inputs, labels, lf))
+    lf = lf(reduction='none')
+    with torch.no_grad():
+        for i, (inputs, labels) in enumerate(loader):
+            if (num_batches is not None) and i >= num_batches:
+                break
+            torch.cuda.empty_cache()
+            ratios.append(run_membership_inference_attack(model, avg_train_l, inputs, labels, lf))
 
     return sum(ratios)/len(ratios)

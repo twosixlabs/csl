@@ -1,0 +1,60 @@
+@inproceedings{smooth-sensitivity,
+author = {Nissim, Kobbi and Raskhodnikova, Sofya and Smith, Adam},
+title = {Smooth Sensitivity and Sampling in Private Data Analysis},
+year = {2007},
+isbn = {9781595936318},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1250790.1250803},
+doi = {10.1145/1250790.1250803},
+abstract = {We introduce a new, generic framework for private data analysis.The goal of private
+data analysis is to release aggregate information about a data set while protecting
+the privacy of the individuals whose information the data set contains.Our framework
+allows one to release functions f of the data withinstance-based additive noise. That
+is, the noise magnitude is determined not only by the function we want to release,
+but also bythe database itself. One of the challenges is to ensure that the noise
+magnitude does not leak information about the database. To address that, we calibrate
+the noise magnitude to the smoothsensitivity of f on the database x --- a measure
+of variabilityof f in the neighborhood of the instance x. The new frameworkgreatly
+expands the applicability of output perturbation, a technique for protecting individuals'
+privacy by adding a smallamount of random noise to the released statistics. To our
+knowledge, this is the first formal analysis of the effect of instance-basednoise
+in the context of data privacy.Our framework raises many interesting algorithmic questions.
+Namely,to apply the framework one must compute or approximate the smoothsensitivity
+of f on x. We show how to do this efficiently for several different functions, including
+the median and the cost ofthe minimum spanning tree. We also give a generic procedure
+based on sampling that allows one to release f(x) accurately on manydatabases x. This
+procedure is applicable even when no efficient algorithm for approximating smooth
+sensitivity of f is known orwhen f is given as a black box. We illustrate the procedure
+by applying it to k-SED (k-means) clustering and learning mixtures of Gaussians.},
+booktitle = {Proceedings of the Thirty-Ninth Annual ACM Symposium on Theory of Computing},
+pages = {75–84},
+numpages = {10},
+keywords = {private data analysis, output perturbation, sensitivity, privacy preserving data mining, clustering},
+location = {San Diego, California, USA},
+series = {STOC '07}
+}
+
+@article{metrics-local-sensitivity,
+  author    = {Peeter Laud and
+               Alisa Pankova and
+               Martin Pettai},
+  title     = {A Framework of Metrics for Differential Privacy from Local Sensitivity},
+  journal   = {Proc. Priv. Enhancing Technol.},
+  volume    = {2020},
+  number    = {2},
+  pages     = {175--208},
+  year      = {2020},
+  url       = {https://doi.org/10.2478/popets-2020-0023},
+  doi       = {10.2478/popets-2020-0023},
+  timestamp = {Wed, 30 Sep 2020 16:54:04 +0200},
+  biburl    = {https://dblp.org/rec/journals/popets/LaudPP20.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@misc{convex-optimization-ml-slides,
+  title = {Convex Optimization for Machine Learning},
+  author = {Aurélien Garivier},
+  year = {2018},
+  notes = {\url{https://www.math.univ-toulouse.fr/~agarivie/sites/default/files/8_optimization.pdf}}
+}

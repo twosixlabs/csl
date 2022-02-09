@@ -8,31 +8,28 @@ import torch.optim as optim
 from collections import defaultdict
 import numpy as np
 import autograd_hacks
+import opacus
 
 def loader_accuracy(model, test_loader, lf=nn.NLLLoss()):
-    correct = 0
-    num_data = 0
     lossies = []
-
+    accs = []
     #grab a batch from the test loader
-    for examples, labels in test_loader:
-        torch.cuda.empty_cache()
-        with torch.no_grad():
+    with torch.no_grad():
+        for examples, labels in test_loader:
+            torch.cuda.empty_cache()
             examples = examples.to(torch.cuda.current_device())
             gpu_lab = labels.to(torch.cuda.current_device())
             outputs = model.forward(examples)
-            lossies.append(lf(torch.squeeze(outputs), torch.squeeze(gpu_lab)))
-        
-        #for each output in the batch, check if the label is correct
-        for i, output in enumerate(outputs):
-            num_data += 1
-            output = output.cpu()
-            max_i = np.argmax(output.detach().numpy())
-            if max_i == labels[i]:
-                correct += 1
+            lossies.append(lf(torch.squeeze(outputs), torch.squeeze(gpu_lab)).item())
+            
+            #for each output in the batch, check if the label is correct
+            preds = np.argmax(outputs.detach().cpu().numpy(), axis=1)
+            labels = labels.detach().cpu().numpy()
+            accuracy = (preds == labels).mean()
+            accs.append(accuracy)
 
-    acc = float(correct)/num_data
     loss = sum(lossies)/len(lossies)
+    acc = sum(accs)/len(accs)
     
     return acc, loss
 
@@ -72,7 +69,7 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
             info['max_sen'].append(np.max(batch_sensitivities)) 
             info['median_sen'].append(np.median(batch_sensitivities)) 
             info['std_sen'].append(std) 
-            train_losses.append(loss)
+            train_losses.append(loss.item())
             if throw_out_threshold or throw_out_std:
                 # delete gradients?
                 #with torch.no_grad():
@@ -124,8 +121,8 @@ def run_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10, a
         
         madv, mopt_round, mtpr, mfpr = mi.merlin_optimal_thresh(model, train_loader, test_loader, lf=lf, num_batches=20, tpr=True)
 
-        info['train_l'].append(avg_train_l.item())
-        info['test_l'].append(avg_test_l.item())
+        info['train_l'].append(avg_train_l)
+        info['test_l'].append(avg_test_l)
         info['yeom_tpr'].append(tpr)
         info['yeom_fpr'].append(fpr)
         info['acc'].append(avg_test_acc)
@@ -165,25 +162,25 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, ep
         for x_batch_train, y_batch_train in train_loader:
 
             model_optimizer.zero_grad()
-            inp = Variable(x_batch_train, requires_grad=True)
-            inp = inp.to(torch.cuda.current_device())
+            inp = x_batch_train.to(torch.cuda.current_device())
             outputs = model.forward(inp)
             y_batch_train = y_batch_train.to(torch.cuda.current_device())
             loss = model_criterion(outputs, y_batch_train)
             loss.backward()
             autograd_hacks.compute_grad1(model)
-            clipper, mn = isp.clipped_autograd(model, C)
-            #info['max_norms'].append(mn)
-            autograd_hacks.clear_backprops(model)
-            train_losses.append(loss) 
+            mn = isp.clipped_autograd(model, C)
+            train_losses.append(loss.item()) 
             
             if add_noise:
                 sigma = np.sqrt((C**2 * alpha) / (2 * epsilon_iter))
-                with torch.no_grad():
-                    for p in model.parameters():
-                        p.grad += (sigma * torch.randn(1,device=torch.cuda.current_device()).float())
+            else:
+                sigma = 0
+            with torch.no_grad():
+                for p in model.parameters():
+                    p.grad += (sigma * torch.randn(p.grad.shape,device=torch.cuda.current_device()).float())
 
             model_optimizer.step()
+            autograd_hacks.clear_backprops(model)
 
 
         
@@ -196,8 +193,8 @@ def baseline_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, ep
 
         madv, mopt_round, mtpr, mfpr = mi.merlin_optimal_thresh(model, train_loader, test_loader, lf=lf, num_batches=20, tpr=True)
 
-        info['train_l'].append(avg_train_l.item())
-        info['test_l'].append(avg_test_l.item())
+        info['train_l'].append(avg_train_l)
+        info['test_l'].append(avg_test_l)
         info['yeom_tpr'].append(tpr)
         info['yeom_fpr'].append(fpr)
         info['acc'].append(avg_test_acc)
@@ -276,5 +273,156 @@ def weight_experiment(model, train_set, test_set, epsilon=1, alpha=25, epochs=10
         if epoch % print_rate == 0:
             acc = avg_test_acc
             print(f'Epoch {epoch}: train loss {avg_train_l}, test loss {avg_test_l}, adv {adv}, acc {acc}')
+
+    return info, model
+
+
+
+def opacus_experiment(model, train_set, test_set, epsilon=1, alpha=25, C=2, epochs=10, add_noise=False, batch_size=32, lf=nn.NLLLoss, print_rate=1, learning_rate=.001, idx=0):
+    if epsilon==0:
+        add_noise=False
+    # reset the model
+    virtual_bs = 64
+    n_vb = batch_size / virtual_bs
+    assert batch_size % virtual_bs == 0
+    
+  
+    model.to(torch.cuda.current_device())
+    train_loader = DataLoader(train_set, batch_size=virtual_bs, shuffle=True, drop_last=True)
+    test_loader = DataLoader(test_set, batch_size=virtual_bs, shuffle=False, drop_last=True)
+    model_criterion = lf() 
+    model_optimizer = optim.Adam(model.parameters(),lr=learning_rate)
+
+    
+    if epsilon != 0: 
+        epsilon_iter = epsilon / epochs
+        sigma = np.sqrt((1**2 * alpha) / (2 * epsilon_iter))
+    else:
+        sigma = 0
+
+    privacy_engine = opacus.PrivacyEngine(
+        model,
+        alphas=[alpha],
+        max_grad_norm=C,
+        target_epsilon=epsilon,
+        target_delta=1e-5,
+        epochs=epochs,
+        batch_size=batch_size,
+        sample_size=len(train_set),
+        noise_multiplier=sigma
+    )
+    privacy_engine.attach(model_optimizer)
+    privacy_engine.to(torch.cuda.current_device())
+    print(sigma, privacy_engine.noise_multiplier)
+    
+
+    info = defaultdict(list)
+    train_accs = []
+    test_accs = []
+    avg_train_ls = []
+    advs = []
+
+    
+    train_losses = []
+    true_budgets = []
+    
+    for epoch in range(epochs):
+        train_losses = []
+        for i, (x_batch_train, y_batch_train) in enumerate(train_loader):
+
+            x_batch_train = x_batch_train.to(torch.cuda.current_device())
+            outputs = model.forward(x_batch_train)
+            y_batch_train = y_batch_train.to(torch.cuda.current_device())
+            loss = model_criterion(outputs, y_batch_train)
+            loss.backward()
+            train_losses.append(loss.item()) 
+            if i % n_vb == 0:
+                model_optimizer.step()
+                model_optimizer.zero_grad()
+            else:
+                model_optimizer.virtual_step()
+
+
+        print(privacy_engine.get_privacy_spent()) 
+        torch.save(model.state_dict(), f'../../data/cifar/cifar_model_{idx}_{batch_size}_{epsilon}_{C}_{epoch}.torch')
+        avg_train_l = sum(train_losses)/len(train_losses)
+        print(f'Epoch {epoch}: train loss {avg_train_l}: cifar_model_{epsilon}_{C}_{epoch}.torch saved') # , test loss {avg_test_l}, adv {adv}, acc {acc}')
+        #avg_test_acc, avg_test_l = loader_accuracy(model, test_loader, lf=model_criterion)
+        #    
+        #tpr = mi.run_yeom_loader(model, avg_train_l, train_loader, lf=lf)
+        #fpr = mi.run_yeom_loader(model, avg_train_l, test_loader, lf=lf)
+        #adv = tpr-fpr
+
+        ##madv, mopt_round, mtpr, mfpr = mi.merlin_optimal_thresh(model, train_loader, test_loader, lf=lf, num_batches=20, tpr=True)
+
+        #info['train_l'].append(avg_train_l)
+        #info['test_l'].append(avg_test_l)
+        #info['yeom_tpr'].append(tpr)
+        #info['yeom_fpr'].append(fpr)
+        #info['acc'].append(avg_test_acc)
+        ##info['merlin_tpr'].append(mtpr)
+        ##info['merlin_fpr'].append(mfpr)
+        avg_train_ls.append(avg_train_l)
+        true_budgets.append(privacy_engine.get_privacy_spent())
+    return avg_train_ls, true_budgets
+        
+
+
+def opacus_vanilla(model, train_set, test_set, epsilon=1, alpha=25, C=2, epochs=10, add_noise=False, batch_size=32, lf=nn.NLLLoss, print_rate=1):
+    if epsilon==0:
+        add_noise=False
+    # reset the model
+    model.to(torch.cuda.current_device())
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, drop_last=True)
+    model_criterion = lf() 
+    model_optimizer = optim.Adam(model.parameters(),lr=0.001)
+    if add_noise:
+        privacy_engine = opacus.PrivacyEngine(
+            model,
+            alphas=[alpha],
+            max_grad_norm=5,
+            target_epsilon=epsilon,
+            target_delta=1e-5,
+            epochs=epochs,
+            sample_rate=1
+        )
+        privacy_engine.attach(model_optimizer)
+        privacy_engine.to(torch.cuda.current_device())
+    
+
+    info = defaultdict(list)
+    train_accs = []
+    test_accs = []
+    advs = []
+
+    
+    train_losses = []
+    
+    for epoch in range(epochs):
+        train_losses = []
+        for x_batch_train, y_batch_train in train_loader:
+
+            model_optimizer.zero_grad()
+            x_batch_train = x_batch_train.to(torch.cuda.current_device())
+            outputs = model.forward(x_batch_train)
+            y_batch_train = y_batch_train.to(torch.cuda.current_device())
+            loss = model_criterion(outputs, y_batch_train)
+            loss.backward()
+            train_losses.append(loss) 
+            
+            model_optimizer.step()
+
+
+        
+        avg_test_acc, avg_test_l = loader_accuracy(model, test_loader, lf=model_criterion)
+        avg_train_l = sum(train_losses)/len(train_losses)
+            
+
+
+        
+        if epoch % print_rate == 0:
+            acc = avg_test_acc
+            print(f'Epoch {epoch}: train loss {avg_train_l}, test loss {avg_test_l}, acc {acc}')
 
     return info, model

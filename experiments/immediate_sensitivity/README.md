@@ -6,17 +6,17 @@ This directory includes experiment runners and data analysis for immediate sensi
 
 Each dataset has two files that run experiments: 
  - `[dataset]_experiment.py` trains models with immediate sensitivity.
- - `[dataset]_experiment.py` trains models with the gradient clipping approach to differential privacy.
+ - `[dataset]_baseline.py` trains models with the gradient clipping approach to differential privacy.
 
 After these programs have trained models, we save their weights and data to a series of pickle files in the `csl/data/[dataset]` directory.
 
 
 ### Datsets
 
-We run experiments on the Texas-100, Purchase-100, and Cifar-100 datasets
+We run experiments on the Texas-100, Purchase-100, Cifar-10, and FMNIST datasets
 
 
-## Analysis
+## Membership Inference Analysis
 
 A series of python notebooks generate the plots.  The following highlights differences between them
 
@@ -25,8 +25,23 @@ A series of python notebooks generate the plots.  The following highlights diffe
  - `texas_width_analysis.ipynb` considers how membership inference advantage might change with a larger or smaller model.
  - `purchase_mult_analysis.ipynb` is the same as `tex_mult_analysis.ipynb` but for the Purchase-100 dataset.
 
+ - `pareto.ipynb` generates pareto fronts for all three datasets.
 
 There are a few more notebooks, but these include the primary results.
+
+## Data Poisoning Analysis
+
+The following Python files run the trials and generate the results:
+
+ - `data_poisoning_experiment_baseline.py`
+ - `data_poisoning_experiment.py`
+ - `data_poisoning_harness_baseline.py`
+ - `data_poisoning_harness.py`
+
+The following notebooks calculate epsilon values and graph the results:
+
+ - `Data Poisoning Attack Epsilon Calculation.ipynb`
+ - `Data Poisoning Graphs.ipynb`
 
 ## Library 
 

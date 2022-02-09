@@ -1,0 +1,672 @@
+%%%%%%%%%
+% FLAGS %
+%%%%%%%%%
+
+% Is this an internal version? (i.e., not public-facing.)
+\ifdefined \isinternal \else \def \isinternal{1} \fi
+
+% Is this an extended version? (e.g., includes appendix.)
+\ifdefined \isextended \else \def \isextended{1} \fi
+
+% Should authors be identified? (e.g., not submitted for blind peer review.)
+\ifdefined \isauthorid \else \def \isauthorid{1} \fi
+
+% Defaults can be overridden from the Makefile
+\newif \ifinternal \if \isinternal 0 \internalfalse \else \internaltrue \fi
+\newif \ifextended \if \isextended 0 \extendedfalse \else \extendedtrue \fi
+\newif \ifauthorid \if \isauthorid 0 \authoridfalse \else \authoridtrue \fi
+
+%%%%%%%%%%%%
+% DOCUMENT %
+%%%%%%%%%%%%
+
+\documentclass{article}
+
+\usepackage[T5,T1]{fontenc}
+
+\usepackage{longtable}
+
+\input{darais-latex-imports}
+\input{darais-latex-macros}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{8pt}
+
+\begin{document}
+
+\section{A Tiny Model (No Vectors)}
+
+A single layer neural net implements essentially just a single multiplication.
+
+We have an input vector ⸨𝐱 ≜ [x₁,x₂]⸩, a weights vector ⸨𝛉 ≜ [θ₁,θ₂]⸩, and the
+classification function ⸨f⸩ is:
+M⁅ f⸤𝛉⸥(𝐱) ≜ θ₁x₁ + θ₂x₂ M⁆
+
+Here is the mean squared error loss function over scalars:
+M⁅ L(a,b) ≜ (a - b)² M⁆
+and the loss of our function ⸨f⸩ {w.r.t.} a training example ⸨y⸩ is:
+M⁅ L⸤f⸤𝛉⸥⸥(𝐱,y) Aː[t]rcl
+                A⁅ ⧼≜⧽ (f⸤𝛉⸥(𝐱) - y)² 
+                A⁃ ⧼=⧽ (θ₁x₁ + θ₂x₂ - y)²
+                A⁃ ⧼=⧽ θ₁²x₁² + θ₂²x₂² + 2θ₁θ₂x₁x₂ - 2θ₁x₁y - 2θ₂x₂y + y²
+                A⁆
+M⁆
+Here is the gradient of ⸨L⸤f⸤𝛉⸥⸥(𝐱,y)⸩ {w.r.t.} ⸨𝛉⸩:
+M⁅ ∇⸤𝛉⸥L⸤f⸤𝛉⸥⸥(𝐱,y) Aː[t]rcl
+                    A⁅ ⧼≜⧽ ‘[ \frac{∂(L⸤f⸤𝛉⸥⸥(𝐱,y))}{∂θ₁} , \frac{∂(L⸤f⸤𝛉⸥⸥(𝐱,y))}{∂θ₂} ’]
+                    A⁃ ⧼=⧽ ‘[ 2θ₁x₁²+ 2θ₂x₁x₂ - 2x₁y , 2θ₂x₂²+ 2θ₁x₁x₂ - 2x₂y ’]
+                    A⁆
+M⁆
+The «immediate sensitivity» is defined as:
+M⁅ «𝐈𝐒»⸤𝐱,𝛉⸥(f) Aː[t]rcl
+                  A⁅ ⧼≜⧽ ‖ ∇⸤𝐱⸥ ‖ ∇⸤𝛉⸥ L⸤f⸤𝛉⸥⸥(𝐱,y) ‖₂ ‖₂
+                  A⁃ ⧼=⧽ ‖ ∇⸤𝐱⸥ ‖ ‘[ 2θ₁x₁²+ 2θ₂x₁x₂ - 2x₁y , 2θ₂x₂²+ 2θ₁x₁x₂ - 2x₂y ’] ‖₂ ‖₂
+                  A⁃ ⧼=⧽ ‖ ∇⸤𝐱⸥ √{(2θ₁x₁²+ 2θ₂x₁x₂ - 2x₁y)² + (2θ₂x₂²+ 2θ₁x₁x₂ - 2x₂y)²} ‖₂
+                  A⁃ ⧼=⧽ ‖ ∇⸤𝐱⸥ 2√{(x₁² + x₂²)(θ₁x₁ + θ₂x₂ - y)²} ‖₂
+                  A⁆
+M⁆
+% We want to know ⸨β⸩ such that the above quantity is ⸨β⸩-smooth.
+% The derivative of the loss is:
+% M⁅ \frac{∂L⸤f⸤θ⸥⸥(x,y)}{∂θᵀ} Aː[t]rcl
+%                              A⁅ ⧼≜⧽ \frac{∂(xθᵀ - y)²}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2(xθᵀ - y)\frac{∂(xθᵀ - y)}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2(xθᵀ - y)(\frac{∂(xθᵀ)}{∂θᵀ} - \frac{∂y}{∂θᵀ})
+%                              A⁃ ⧼=⧽ 2(xθᵀ - y)\frac{∂(xθᵀ)}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2x(xθᵀ - y)\frac{∂θᵀ}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2x(xθᵀ - y)
+%                              A⁆
+% M⁃
+% M⁃ \frac{∂L⸤f⸤θ⸥⸥(x,y)}{∂θᵀ} Aː[t]rcl
+%                              A⁅ ⧼≜⧽ \frac{∂(xθᵀ - y)²}{∂θᵀ}
+%                              A⁃ ⧼=⧽ \frac{∂((xθᵀ)² - 2xyθᵀ - y²)}{∂θᵀ}
+%                              A⁃ ⧼=⧽ \frac{∂((xθᵀ)²)}{∂θᵀ} - \frac{∂(2xyθᵀ)}{∂θᵀ} - \frac{∂(y²)}{∂θᵀ}
+%                              A⁃ ⧼=⧽ \frac{∂((xθᵀ)²)}{∂θᵀ} - 2xy\frac{∂θᵀ}{∂θ}
+%                              A⁃ ⧼=⧽ 2x²θᵀ\frac{∂θᵀ}{∂θᵀ} - 2xy\frac{∂θᵀ}{∂θᵀ}
+%                              A⁃ ⧼=⧽ 2x²θᵀ - 2xy
+%                              A⁃ ⧼=⧽ 2x(xθᵀ - y)
+%                              A⁃ ⧼=⧽ ... 2xᵀ(xθᵀ - y)
+%                              A⁆
+% M⁆
+
+\section{A Tiny Model (Vectorized)}
+
+A single layer neural net implements essentially just a single multiplication.
+
+We have an input vector ⸨x⸩, a weights vector ⸨θ⸩, and the
+classification function ⸨f⸩ is:
+M⁅ f⸤θ⸥(x) ≜ xθᵀ M⁆
+
+Here is the mean squared error loss function over scalars:
+M⁅ L(a,b) ≜ (a - b)² M⁆
+and the loss of our function ⸨f⸩ {w.r.t.} a training example ⸨y⸩ is:
+M⁅ L⸤f⸤θ⸥⸥(x,y) Aː[t]rcl
+                A⁅ ⧼≜⧽ (f⸤θ⸥(x) - y)² 
+                A⁃ ⧼=⧽ (xθᵀ - y)²
+                A⁆
+M⁆
+The «immediate sensitivity» is defined as:
+M⁅ ‖ ∇ₓ ‖ ∇⸤θ⸥ L⸤f⸤θ⸥⸥(x,y) ‖₂ ‖₂
+M⁆
+We want to know ⸨β⸩ such that the above quantity is ⸨β⸩-smooth.
+The derivative of the loss is:
+M⁅ \frac{∂L⸤f⸤θ⸥⸥(x,y)}{∂θᵀ} Aː[t]rcl
+                             A⁅ ⧼≜⧽ \frac{∂(xθᵀ - y)²}{∂θᵀ}
+                             A⁃ ⧼=⧽ 2(xθᵀ - y)\frac{∂(xθᵀ - y)}{∂θᵀ}
+                             A⁃ ⧼=⧽ 2(xθᵀ - y)(\frac{∂(xθᵀ)}{∂θᵀ} - \frac{∂y}{∂θᵀ})
+                             A⁃ ⧼=⧽ 2(xθᵀ - y)\frac{∂(xθᵀ)}{∂θᵀ}
+                             A⁃ ⧼=⧽ 2x(xθᵀ - y)\frac{∂θᵀ}{∂θᵀ}
+                             A⁃ ⧼=⧽ 2x(xθᵀ - y)
+                             A⁆
+M⁃
+M⁃ \frac{∂L⸤f⸤θ⸥⸥(x,y)}{∂θᵀ} Aː[t]rcl
+                             A⁅ ⧼≜⧽ \frac{∂(xθᵀ - y)²}{∂θᵀ}
+                             A⁃ ⧼=⧽ \frac{∂((xθᵀ)² - 2xyθᵀ - y²)}{∂θᵀ}
+                             A⁃ ⧼=⧽ \frac{∂((xθᵀ)²)}{∂θᵀ} - \frac{∂(2xyθᵀ)}{∂θᵀ} - \frac{∂(y²)}{∂θᵀ}
+                             A⁃ ⧼=⧽ \frac{∂((xθᵀ)²)}{∂θᵀ} - 2xy\frac{∂θᵀ}{∂θ}
+                             A⁃ ⧼=⧽ 2x²θᵀ\frac{∂θᵀ}{∂θᵀ} - 2xy\frac{∂θᵀ}{∂θᵀ}
+                             A⁃ ⧼=⧽ 2x²θᵀ - 2xy
+                             A⁃ ⧼=⧽ 2x(xθᵀ - y)
+                             A⁃ ⧼=⧽ ... 2xᵀ(xθᵀ - y)
+                             A⁆
+M⁆
+
+\section{New}
+
+% Need: IS is ⸨β⸩-smooth.
+
+% Know: IS(x)
+% Need to know: IS is ⸨β⸩-smooth
+% Need to know: ⸨ | IS(x) - IS(x') | ≤ ???⸩
+
+% If IS is ⸨β⸩-smooth then ⸨| IS(x) - IS(x') | ≤ β⸩
+
+% We care about: local sensitivity of gradient G
+
+% ‖ G(x) - G(x') ‖₂ ≤ IS(x) + β
+
+% if G' is β-smooth then:
+
+% ‖G'(x) - G'(x')‖ ≤ β ‖x - x'‖        (defn of smoothness)
+% ‖G'(x) - G'(x')‖ ≤ β                 (‖x - x'‖ ≤ 1 by assumption)
+
+
+% LS⸤G⸥(x) = max⸤x' . d(x, x') ≤ 1⸥ ‖ G(x) - G(x') ‖
+
+% MVT says:
+% ∀ x, x'. ∃ x''. x ≤ x'' ≤ x' ∧ ‖G(x) - G(x')‖ / ‖x - x'‖ = G'(x'')
+
+%    ‖G(x) - G(x')‖ / ‖x-x'‖ = G'(x'') for some x''           (mean value theorem)
+% => ‖G(x) - G(x')‖ / ‖x-x'‖ = G'(x) + ‖G'(x) - G'(x'')‖      (arithmetic)
+% => ‖G(x) - G(x')‖ / ‖x-x'‖ ≤ G'(x) + β ‖x - x''‖            (def. of β-smoothness)
+% => ‖G(x) - G(x')‖ / ‖x-x'‖ ≤ G'(x) + β                      (def. absolute value)
+% => ‖G(x) - G(x')‖          ≤ G'(x) + β                      (inequality)
+% => LS⸤G⸥(x)                ≤ G'(x) + β                      (def. of LS)
+
+
+
+% => G(x) - G(x') = G'(x) + ‖G'(x) - G'(x'')‖ 
+% => G(x) - G(x') ≤ G'(x) + β                          (by above)
+% => LS⸤G⸥(x)     ≤ G'(x) + β                          (def of LS)
+
+
+
+\section{Current Situation}
+
+For all of the following, ⸨‖X‖₁⸩ is the L1 norm, ⸨‖X‖₂⸩ is the L2 norm, ⸨‖X‖⸤∞⸥⸩
+is the L❪∞❫ norm, and ⸨‖X‖⸩ (without a subscript) is some norm in a parametrized
+metric space. Same goes for distances ⸨‖X-Y‖₁⸩, ⸨‖X-Y‖₂⸩, ⸨‖X-Y‖⸤∞⸥⸩ and
+⸨‖X-Y‖⸩.
+
+\subsection{From \cite{smooth-sensitivity}}
+
+\begin{definition}[Global Sensitivity \citep{smooth-sensitivity}]
+  The Global Sensitivity of ⸨f⸩ is ⸨«GS»⸤f⸥⸩ where:
+  M⁅ X⁅ ⩊ «GS»⸤f⸥ ≜ \max\limits⸤x,y:‖x-y‖=1⸥ ‖ f(x) - f(y) ‖₁ 
+        ⩊ ⟪\citep[§ 1.2, Definition 1.3]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: ⸨‖x-y‖⸩ is an abstract distance but ⸨‖ f(x) - f(y) ‖₁⸩  is
+  specifically L1 distance.
+\end{definition}
+
+\begin{definition}[Local Sensitivity \citep{smooth-sensitivity}]
+  The Local Sensitivity of ⸨f⸩ at ⸨x⸩ is ⸨«LS»⸤f⸥(x)⸩ where:
+  M⁅ X⁅ ⩊ «LS»⸤f⸥(x) ≜ \max\limits⸤y:‖x-y‖=1⸥ ‖ f(x) - f(y) ‖₁
+        ⩊ ⟪\citep[§ 1.3, Definition 1.6]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: ⸨‖x-y‖⸩ is an abstract distance but ⸨‖ f(x) - f(y) ‖₁⸩  is
+  specifically L1 distance.
+\end{definition}
+
+\begin{definition}[DP-⸨β⸩-Smoothness \citep{smooth-sensitivity}]\ \\
+  A function ⸨f⸩ is DP-⸨β⸩-Smooth if:
+  M⁅ X⁅ ⩊ «GS»⸤\ln(f(⋅))⸥ ≤ β
+        ⩊ ⟪\citep[§ 2.1]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Alternatively, ⸨f⸩ is DP-⸨β⸩-smooth if:
+  M⁅ X⁅ ⩊ ∀ x,y⍪ ‖x-y‖ = 1 ⟹ f(x) ≤ e⸢β⸣f(y)
+        ⩊ ⟪\citep[§ 2.1, Definition 2.1, (2)]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: \cite{smooth-sensitivity} just calls this “⸨β⸩-smooth”.
+  \subparagraph{Why are these the same?} 
+  ⟪
+  M⁅ Aːlcl@{␠}l
+     A⁅ ⧼ ⧽ «GS»⸤\ln(f(⋅))⸥ ≤ β
+     A⁃ ⧼⟺⧽ ∀ x,y⍪ ‖x-y‖ = 1 ⇒ ‖\ln(f(x)) - \ln(f(y))‖₁ ≤ β & ⟅definition⟆
+     A⁃ ⧼⟺⧽ ∀ x,y⍪ ‖x-y‖ = 1 ⇒ \ln(f(x)) ≤ β + \ln(f(y))    & ⟅(somehow?)⟆
+     A⁃ ⧼⟺⧽ ∀ x,y⍪ ‖x-y‖ = 1 ⇒ f(x) ≤ e⸢β⸣f(y)              & ⟅algebra⟆
+     A⁆
+  M⁆
+  ⟫
+\end{definition}
+
+\begin{definition}[DP-⸨β⸩-Smooth Sensitivity \citep{smooth-sensitivity}]\ \\
+  A function ⸨f⸩ has DP-⸨β⸩-Smooth sensitivity if its local sensitivity is
+  ⸨β⸩-smooth:
+  M⁅ «GS»⸤\ln(«LS»⸤f⸥(⋅))⸥ ≤ β M⁆
+  or:
+  M⁅ ∀ x,y⍪ ‖x-y‖ = 1 ⟹ «LS»⸤f⸥(x) ≤ e⸢β⸣«LS»⸤f⸥(y) M⁆
+  \subparagraph{What if ⸨«LS»⸤f⸥⸩ isn't already smooth?}
+  ⟪
+  \cite{smooth-sensitivity} defines a construction of ⸨S⸢*⸣⸤f,β⸥⸩
+  which is the best upper bound on the local sensitivity of ⸨f⸩ which is also
+  ⸨β⸩-smooth; this construction is:
+  M⁅ S⸢*⸣⸤f,β⸥(x) = \max⸤y⸥«LS»⸤f⸥(y)e⸢-β‖x-y‖⸣ M⁆
+  ⟫
+\end{definition}
+
+\subsection{From \cite{metrics-local-sensitivity}}
+
+\begin{definition}[Generalized Global Sensitivity \citep{metrics-local-sensitivity}]
+  The Generalized Global Sensitivity of ⸨f⸩ is ⸨«GGS»⸤f⸥⸩ where:
+  M⁅ X⁅ ⩊ «GGS»⸤f⸥ ≜ \max⸤x,y⸥ \frac{‖f(x)-f(y)‖}{‖x-y‖}
+        ⩊ ⟪\citep[§ 3.2, Definition 2]{metrics-local-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: \cite{metrics-local-sensitivity} just calls this “Global Sensitivity”
+\end{definition}
+
+\begin{definition}[Derivative Sensitivity \citep{metrics-local-sensitivity}]
+  The Derivative Sensitivity of ⸨f⸩ at ⸨x⸩ is ⸨«DS»⸤f⸥(x)⸩ where:
+  M⁅ X⁅ ⩊ «DS»⸤f⸥(x) ≜ ‖f′(x)‖
+        ⩊ ⟪\citep[§ 4.2, Definition 12]{metrics-local-sensitivity}⟫
+     X⁆
+  M⁆
+\end{definition}
+
+\paragraph{From ML literature}
+
+\begin{definition}[ML-⸨β⸩-Smoothness]
+  A function ⸨f⸩ is ML-⸨β⸩-Smooth if:
+  M⁅ X⁅ ⩊ ‖f′(x) - f′(y)‖ ≤ β‖x-y‖ 
+        ⩊ ⟪\citep[§ 3]{convex-optimization-ml-slides}⟫
+     X⁆
+  M⁆
+  or:
+  M⁅ «GGS»⸤f′⸥ ≤ β M⁆
+\end{definition}
+
+\subsection{New Definitions}
+
+\begin{definition}[Immediate Sensitivity]
+  The Immediate Sensitivity of ⸨f⸩ at ⸨x⸩ is ⸨«IM»⸤f⸥(x)⸩ where:
+  M⁅ «IS»⸤f⸥(x) ≜ ‖f′(x)‖ M⁆
+  J⁅ Note: ⸨«IS»⸤f⸥(x) = «DS»⸤f⸥(x)⸩.
+  J⁃ Note: In our case studies we pick specifically the L2 norm, so in that
+     setting, ⸨«IS»⸤f⸥(x) ≜ ‖f′(x)‖₂⸩ and is an instantiation of ⸨«DS»⸤f⸥(x)⸩
+     for a particular norm.
+  J⁆
+\end{definition}
+
+\subsection{Where we are}
+
+We have observed that for some architectures, using the L1 norm, ⸨d«IS»⸤f⸥/dx⸩
+is constant, i.e.,  ⸨d«IS»⸤f⸥/dx = C⸩ for some scalar ⸨C⸩. So ⸨«IS»⸤f⸥⸩ is
+ML-⸨β⸩-smooth for ⸨β=0⸩, and ⸨f⸩ is ML-⸨β⸩-smooth for ⸨β=C⸩.
+
+We are currently investigating the following questions:
+E⁅ Given an ML-⸨β⸩-smooth bound on ⸨f⸩, can we construct some DP-⸨β⸩-smooth bound
+   on ⸨f⸩?
+E⁃ Given an ML-⸨β⸩-smooth bound on some altered ⸨f⸩ (e.g., ⸨\ln(f)⸩), can we
+   construct some DP-⸨β⸩-smooth bound on ⸨f⸩?
+E⁃ Given that ⸨d«IS»⸤f⸥/dx⸩ is constant (or even better; it's ⸨0⸩) for our ⸨f⸩
+   in question, can we directly say something about ⸨«IS»⸤f⸥⸩ being DP-⸨β⸩-smooth?
+E⁆
+
+\section{Bounded Global Sensitivity Analysis}
+
+Environment ⸨γ⸩ encodes upper and lower bound assumptions on input variables.
+E.g., ⸨γ(x) = -1,1⸩ encodes that ⸨x⸩ is guaranteed to range between ⸨-1⸩ and
+⸨1⸩. This is exactly the interval abstract domain from the literature on
+abstract interpretation.
+
+The function ⸨⟦‗⟧⸩ is the algorithm for bounded global sensitivity analysis. It
+takes as input an expression and an environment ⸨γ⸩ and returns a mapping from
+variables ⸨x ∈ ‹var›⸩ to a pair of «sensitivity ranges» ⸨sˡ,sʰ⸩, and a pair of
+«value ranges» ⸨rˡ,rʰ⸩.
+
+A couple of notes:
+I⁅ Most global sensitivity analyses assume positive real numbers as values. We
+   must relax this to negative reals in order for ⦑relu⦒ to make sense. A lot
+   what is going on (e.g., in the ⸨×⸩ definition) is accounting for the presence
+   of negative reals, e.g., multiplying two large negative-valued lower bounds
+   could result in a positive-valued upper bound. Sensitivities are also tracked
+   with their sign, e.g., the expression ⸨-1x⸩ is ⸨-1⸩-sensitive in ⸨x⸩. Because
+   sensitivities are now signed, we must track a range of sensitivities.
+I⁃ We could dramatically simplify things by operating over non-negative reals
+   and using some hypothetical alternative to relu, but I get the feeling
+   supporting negative reals will eventually be essential for ML applications,
+   so I've pressed ahead and complicated things with negative reals.
+I⁃ The log operation “in math” is only defined for positive valued reals, so
+   I've the operation I encode is instead “log of absolute value” so it can be
+   defined on all reals. This is why the join or meet is taken of absolute value
+   lower and upper bounds in the value range. I'm unsure if the numerators
+   should be ⸨sˡ⸩ and ⸨sʰ⸩ as written, or if we should also be taking ⸨sˡ⊓sʰ⸩
+   and ⸨sˡ⊔sʰ⸩ respectively. (We should work out some small examples…)
+I⁃ In the relu operation's definition, I'm similarly unsure about the treatment
+   of ⸨sˡ⸩ and ⸨sʰ⸩ in the definitions for ⸨sˡ′⸩ and ⸨sʰ′⸩.
+I⁆
+
+M⁅ 
+X⁅ ⟪«Setup (syntactic categories, etc.)…»⟫ ⩊
+X⁃
+X⁃ Aːrclcl
+   A⁅ n   ⧼∈⧽ ℕ
+   A⁃ r   ⧼∈⧽ ℝ
+   % A⁃ ṙ   ⧼∈⧽ ℝ⸢∞⸣  ⧼≜⧽ ℝ ⊎ ❴-∞,∞❵
+   A⁃ s   ⧼∈⧽ ℝ⁺    ⧼≜⧽ ❴r ¦ 0 ≤ r❵
+   A⁃ x   ⧼∈⧽ ‹var›
+   A⁃ e   ⧼∈⧽ ‹exp› ⧼⩴⧽ r ¦ x ¦ e+e ¦ e×e ¦ ㏑e ¦ ⦑relu⦒(e)
+   A⁃ γ   ⧼∈⧽ ‹env› ⧼≜⧽ ‹var› → ℝ × ℝ
+   A⁆
+X⁃
+X⁃ ⟪«Bounded Global Sensitivity Algorithm…»⟫ ⩊
+X⁃
+X⁃ Aːrcl
+   A⁅ ⟦‗⟧⸢‗⸣            ⧼∈⧽ ‹exp› × (‹var› → ℝ × ℝ) → (‹var› ⇀ ℝ⁺ × (ℝ × ℝ))
+   A⁃ ⟦r⟧⸢γ⸣(x)         ⧼≜⧽ 0,(r,r)
+   A⁃ ⟦x⟧⸢γ⸣(y)         ⧼≜⧽ ‘❴ Aːl@{␠}c@{␠}l
+                               A⁅ 1,γ(y) ⧼⟪«if»⟫⧽ x = y
+                               A⁃ 0,γ(y) ⧼⟪«if»⟫⧽ x ≠ y
+                               A⁆ ’.
+   A⁃ ⟦e₁+e₂⟧⸢γ⸣(x)     ⧼≜⧽ Aː[t]l
+                            A⁅ s,(rˡ,rʰ)
+                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                            A⁅ s₁,(rˡ₁,rʰ₁) ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
+                                            A⁃ s₂,(rˡ₂,rʰ₂) ⧼=⧽ ⟦e₂⟧⸢γ⸣(x)
+                                            A⁃ s            ⧼=⧽ s₁ + s₂
+                                            A⁃ rˡ           ⧼=⧽ rˡ₁ + rˡ₂
+                                            A⁃ rʰ           ⧼=⧽ rʰ₁ + rʰ₂
+                                            A⁆
+                            A⁆
+   A⁃ ⟦e₁×e₂⟧⸢γ⸣(x)     ⧼≜⧽ Aː[t]l
+                            A⁅ s,(rˡ,rʰ)
+                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                            A⁅ s₁,(rˡ₁,rʰ₁) ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
+                                            A⁃ s₂,(rˡ₂,rʰ₂) ⧼=⧽ ⟦e₂⟧⸢γ⸣(x)
+                                            A⁃ s ⧼=⧽ s₁(|rˡ₂| ⊔ |rʰ₂|) + s₂(|rˡ₁| ⊔ |rʰ₁|)
+                                            A⁃ rˡ ⧼=⧽ rˡ₁rˡ₂ ⊓ rˡ₁rʰ₂ ⊓ rʰ₁rˡ₂ ⊓ rʰ₁rʰ₂
+                                            A⁃ rʰ ⧼=⧽ rˡ₁rˡ₂ ⊔ rˡ₁rʰ₂ ⊔ rʰ₁rˡ₂ ⊔ rʰ₁rʰ₂
+                                            A⁆
+                            A⁆
+   A⁃ ⟦eⁿ⟧                ⧼≜⧽ Aː[t]l
+                              A⁅ s′,(rˡ′,rʰ′)
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ s,(rˡ,rʰ) ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ s′ ⧼=⧽ … n⟨e⟩⸢n-1⸣ s
+                                              A⁃ rˡ′ ⧼=⧽ ???
+                                              A⁃ rʰ′ ⧼=⧽ ???
+                                              A⁆
+                            A⁆
+   A⁃ ⟦㏑e⟧⸢γ⸣(x)         ⧼≜⧽ Aː[t]l
+                              A⁅ s′,(rˡ′,rʰ′)
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ s,(rˡ,rʰ) ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ s′ ⧼=⧽ \frac{s}{rˡ}
+                                              A⁃ rˡ′ ⧼=⧽ ㏑rˡ
+                                              A⁃ rʰ′ ⧼=⧽ ㏑rʰ
+                                              A⁃ 0   ⧼<⧽ rˡ ≤ rʰ
+                                              A⁆
+                            A⁆
+   A⁃ ⟦⦑relu⦒(e)⟧⸢γ⸣(x) ⧼≜⧽ Aː[t]l
+                            A⁅ s′,(rˡ′,rʰ′)
+                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                            A⁅ s,(rˡ,rʰ) ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                            A⁃ s′ ⧼=⧽ ‘❴Aːl@{␠}l@{␠}l
+                                                        A⁅ 0    & «⟪if⟫» & rˡ < 0
+                                                        A⁃ s    & «⟪if⟫» & rˡ ≥ 0
+                                                        A⁆’.
+                                            A⁃ rˡ′ ⧼=⧽ rˡ ⊔ 0
+                                            A⁃ rʰ′ ⧼=⧽ rʰ ⊔ 0
+                                            A⁆
+                            A⁆
+   A⁆
+X⁆
+M⁆
+
+M⁅ -10 ≤ x ≤ 2
+M⁃ ‹sens›(xx) = 20
+M⁃ Aːl
+   A⁅ s₁ = 1
+   A⁃ s₂ = 1
+   A⁃ rˡ₁ = -10
+   A⁃ rʰ₁ = 2
+   A⁃ rˡ₂ = -10
+   A⁃ rʰ₂ = 2
+   A⁆
+M⁆
+
+\section{Enforcing Smoothing}
+
+The «immediate sensitivity» is defined as:
+M⁅ «𝐈𝐒»⸤𝐱,𝛉⸥(f) Aː[t]rcl
+                  A⁅ ⧼≜⧽ ‖ ∇⸤𝐱⸥ ‖ ∇⸤𝛉⸥ L⸤f⸤𝛉⸥⸥(𝐱,y) ‖₂ ‖₂
+                  A⁆
+M⁆
+
+\begin{itemize}
+\item Minibatch is ⸨\bar{x}, \bar{y}⸩ of length ⸨n⸩, with input size ⸨m⸩
+\item Aggregate loss is ⸨L⸤f⸤θ⸥⸥(\bar{x},\bar{y})⸩
+\item Aggregate gradient is ⸨∇⸤θ⸥ L⸤f⸤𝛉⸥⸥(\bar{x},\bar{y})⸩, a vector of length ⸨|θ|⸩ (one element per model weight)
+\item Per-feature immediate sensitivity is ⸨∇⸤\bar{x}⸥ ‖ ∇⸤θ⸥ L⸤f⸤𝛉⸥⸥(\bar{x},\bar{y}) ‖₂⸩, a matrix of size ⸨m × n⸩ (one sensitivity value per feature)
+\item Per-example immediate sensitivity is the row-wise ⸨L₂⸩ norm of the above (how do you write this?), something like ⸨ ‖ ∇⸤\bar{x}⸥ ‖ ∇⸤θ⸥ L⸤f⸤𝛉⸥⸥(\bar{x},\bar{y}) ‖₂ ‖₂ ⸩, a vector of length ⸨n⸩ (one sensitivity per example in the minibatch)
+  \begin{itemize}
+  \item Each per-example sensitivity describes the change in the aggregate gradient if you modify that example
+  \item Worst-case local sensitivity is the max of these
+  \end{itemize}
+\end{itemize}
+
+\paragraph{Enforcing smoothing.}
+If we have an upper bound on ⸨LS⸤f⸥(x)⸩ then we can \emph{construct} a
+smooth upper bound. From~\cite{smooth-sensitivity}, ⸨S⸢*⸣⸩ is
+⸨t⸩-smooth if we construct it like this:
+%
+M⁅ S⸢*⸣⸤f,t⸥ (x) = \max⸤y ∈ 𝒟ⁿ⸥ LS⸤f⸥(y) ⋅ \exp(-t ␣d(x, y))
+M⁆
+
+\paragraph{Conjecture:} the total change in the gradient if we modify
+⸨k ≤ n⸩ examples in the minibatch is upper-bounded by the sum of their
+individual local sensitivities. This is because the aggregate gradient
+is the average of the individual gradients. In the worst case, if we
+change ⸨k⸩ examples, all of the resulting changes to the gradient go
+``in the same direction'' and change the average by their sum.
+
+
+If the conjecture is true, then I think this is an upper bound on ⸨S⸢*⸣⸩:
+
+\begin{verbatim}
+For all k ∈ 0 ... n:
+  Take the largest k local sensitivities from the vector above
+  Add them up to get an upper bound on LS_f(y)
+  Multiply by exp(-tk)
+Take the max of all of these
+\end{verbatim}
+
+Unfortunately this gives us an extra parameter to tune (⸨t⸩).
+
+\paragraph{Claim:} If ⸨S⸩ is a ML-⸨β⸩-smooth upper bound on local
+sensitivity, then we can bound the local sensitivity at distance ⸨k⸩.
+%
+M⁅ d(x,y) ≤ 1 ⇒ S(x) + β ≥ S(y)
+M⁃ d(y,z) ≤ 1 ⇒ S(y) + β ≥ S(z)
+M⁃ d(x,z) ≤ 2 ⇒ S(x) + 2β ≥ S(z)␠ ⟪(substituting)⟫
+M⁆
+%
+Apply this ⸨k⸩ times, you get the general result:
+%
+M⁅ d(x, y) ≤ k ⇒ S(x) + kβ ≥ S(y)
+M⁆
+
+So we can define the DP-⸨t⸩-smooth upper bound (where ⸨n⸩ is minibatch size
+and ⸨S⸩ is ML-⸨β⸩-smooth):
+%
+M⁅ S⸢*⸣⸤f,t⸥ (x) = \max⸤k ∈ ❴0…n❵⸥ (S(x) + kβ) ⋅ \exp(-tk)
+M⁆
+
+
+\section{Attempt 10/21/2021}
+
+
+\begin{definition}[Local Sensitivity \citep{smooth-sensitivity}]
+  The Local Sensitivity of ⸨f⸩ at ⸨x⸩ is ⸨«LS»⸤f⸥(x)⸩ where:
+  M⁅ X⁅ ⩊ «LS»⸤f⸥(x) ≜ \max\limits⸤y:‖x-y‖=1⸥ ‖ f(x) - f(y) ‖₁
+        ⩊ ⟪\citep[§ 1.3, Definition 1.6]{smooth-sensitivity}⟫
+     X⁆
+  M⁆
+  Note: ⸨‖x-y‖⸩ is an abstract distance but ⸨‖ f(x) - f(y) ‖₁⸩  is
+  specifically L1 distance.
+\end{definition}
+%
+Define ⸨G⸤θ⸥(x)⸩ to be the gradient of the loss at ⸨x⸩ with weights
+⸨θ⸩. The local sensitivity of the gradient is:
+%
+M⁅ «LS»⸤G⸤θ⸥⸥(x) = \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) - G⸤θ⸥(y) ‖₂
+M⁆
+
+\begin{theorem}[Option \#1]
+  If we clip inputs ⸨x⸩ such that ⸨‖x‖ ≤ 1⸩, then:
+  M⁅ «LS»⸤G⸤θ⸥⸥(x) ≤ ‖ G⸤θ⸥(x) ‖₂ + \max\limits⸤y:‖y‖≤1⸥ ‖ G⸤θ⸥(y) ‖₂ M⁆
+  We can maximize using SHGO but this bound might be very loose.
+\end{theorem}
+
+\begin{proof}
+  M⁅ Aːlcl@{␠}l
+  A⁅ «LS»⸤G⸤θ⸥⸥(x) ⧼=⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) - G⸤θ⸥(y) ‖₂
+     A⁃ ⧼≤⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) ‖₂ + ‖ -G⸤θ⸥(y) ‖₂ & ⟅triangle inequality⟆
+     A⁃ ⧼=⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) ‖₂ + ‖ G⸤θ⸥(y) ‖₂ & ⟅vector negation, norm⟆
+     A⁃ ⧼=⧽ ‖ G⸤θ⸥(x) ‖₂ + \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(y) ‖₂ & ⟅def ⸨\max⸩, algebra⟆
+     A⁃ ⧼=⧽ ‖ G⸤θ⸥(x) ‖₂ + \max\limits⸤y:‖y‖≤1⸥ ‖ G⸤θ⸥(y) ‖₂ & ⟅clipping⟆
+     A⁆
+  M⁆
+\end{proof}
+
+
+\begin{definition}[Gradient function]
+  Let ⸨G⸤θ⸥(x) ⦂ ℝⁿ → ℝᵐ⸩ be the gradient of the loss wrt weights ⸨θ⸩
+  for a single example ⸨x⸩, and ⸨G⸤θ⸥(x)ᵢ ⦂ ℝⁿ → ℝ⸩ be the ⸨i⸩th
+  element of the gradient vector.
+\end{definition}
+
+\begin{definition}[Per-feature Immediate Sensitivity]
+  Let ⸨«IS»ᵢ(x) ⦂ ℝⁿ → ℝ ≜ ‖∇ (G⸤θ⸥(x)ᵢ)‖₂⸩.
+\end{definition}
+
+\begin{lemma}
+  \label{lemma:lipschitz}
+  If ⸨«IS»ᵢ⸩ is ⸨C⸩-Lipschitz (⸨«A1»⸩) and ⸨∀c ⍪ ‖x-c‖₂ ≤ 1⸩ (⸨«A2»⸩)
+  then:
+  %
+  M⁅ ∀ c, x ⍪ ‖x-c‖₂ ≤ 1 ⇒ «IS»ᵢ(c) ≤ «IS»ᵢ(x) + C M⁆
+  %M⁅ \max\limits⸤c⸥ «IS»ᵢ(c) ≤ «IS»ᵢ(x) + C M⁆
+\end{lemma}
+
+\begin{proof}
+  %
+  M⁅ Aːlcl@{␠}l
+  A⁅ «IS»ᵢ(c) ⧼=⧽ «IS»ᵢ(c) + «IS»ᵢ(x) - «IS»ᵢ(x) & ⟅algebra⟆
+  A⁃ ⧼=⧽ «IS»ᵢ(x) + «IS»ᵢ(c) - «IS»ᵢ(x) & ⟅algebra⟆
+  A⁃ ⧼≤⧽ «IS»ᵢ(x) + | «IS»ᵢ(c) - «IS»ᵢ(x) | & ⟅algebra⟆
+  A⁃ ⧼≤⧽ «IS»ᵢ(x) + C & ⟅⸨«A1», «A2»⸩⟆
+  A⁆
+  M⁆
+\end{proof}
+
+\begin{theorem}[Option \#2]
+  If ⸨«IS»(x)⸩ is ⸨(C₁, …, Cₘ)⸩-Lipschitz, then:
+  M⁅ «LS»⸤G⸤θ⸥⸥(x) ≤ ‖ «IS»(x) + \Big(  C₁, …, Cₘ \Big) ‖₂ M⁆
+\end{theorem}
+
+\begin{proof}
+  %
+  M⁅ Aːlcl@{␠}l
+  A⁅ «LS»⸤G⸤θ⸥⸥(x) ⧼=⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ G⸤θ⸥(x) - G⸤θ⸥(y) ‖₂
+  A⁃ ⧼=⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ \Big( G⸤θ⸥(x)₁ - G⸤θ⸥(y)₁, …, G⸤θ⸥(x)ₘ - G⸤θ⸥(y)ₘ \Big) ‖₂
+  & ⟅def of vector minus⟆
+  A⁃ ⧼≤⧽ \max\limits⸤y:‖x-y‖=1⸥ ‖ \Big( \max\limits⸤c₁⸥ ‖∇ (G⸤θ⸥(c₁)₁)‖₂, …,
+  \max\limits⸤cₘ⸥ ‖∇ (G⸤θ⸥(cₘ)ₘ)‖₂ \Big) ‖₂
+  & ⟅mean value theorem⟆
+  A⁃ ⧼=⧽ ‖ \Big( \max\limits⸤c₁⸥ ‖∇ (G⸤θ⸥(c₁)₁)‖₂, …,
+  \max\limits⸤cₘ⸥ ‖∇ (G⸤θ⸥(cₘ)ₘ)‖₂ \Big) ‖₂
+  & ⟅def ⸨\max⸩⟆
+  A⁃ ⧼=⧽ ‖ \Big( \max\limits⸤c₁⸥ «IS»₁(c₁), …,
+  \max\limits⸤cₘ⸥ «IS»ₘ(cₘ) \Big) ‖₂
+  & ⟅def ⸨«IS»⸩⟆
+  A⁃ ⧼≤⧽ ‖ \Big( «IS»₁(x) + C₁, …,
+  «IS»ₘ(x) + Cₘ \Big) ‖₂
+  & ⟅Lemma~\ref{lemma:lipschitz}⟆
+  A⁃ ⧼=⧽ ‖ \Big( «IS»₁(x) , …,
+  «IS»ₘ(x) \Big) +
+  \Big(  C₁, …,
+  Cₘ \Big)‖₂
+  & ⟅algebra⟆
+  A⁃ ⧼=⧽ ‖ «IS»(x) +
+  \Big(  C₁, …, Cₘ \Big) ‖₂
+  & ⟅algebra⟆
+  A⁆
+  M⁆
+\end{proof}
+
+
+\section{Pure Interval Analysis}
+
+M⁅
+X⁅ Aːrcl
+   A⁅ ⟦‗⟧⸢‗⸣            ⧼∈⧽ ‹exp› × (‹var› → ℝ × ℝ) → (ℝ × ℝ)
+   A⁃ ⟦r⟧⸢γ⸣            ⧼≜⧽ ⟨r,r⟩
+   A⁃ ⟦x⟧⸢γ⸣            ⧼≜⧽ γ(x)
+   A⁃ ⟦e₁+⋯+eₙ⟧⸢γ⸣      ⧼≜⧽ Aː[t]l
+                            A⁅ ⟨r₁,r₂⟩
+                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                            A⁅ ⟨r₁₁,r₁₂⟩ ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
+                                            A⁃           ⧼⋮⧽
+                                            A⁃ ⟨rₙ₁,rₙ₂⟩ ⧼=⧽ ⟦eₙ⟧⸢γ⸣(x)
+                                            A⁃ r₁        ⧼=⧽ r₁₁ + ⋯ + rₙ₁
+                                            A⁃ r₂        ⧼=⧽ r₁₂ + ⋯ + rₙ₂
+                                            A⁆
+                            A⁆
+   A⁃ ⟦e₁×⋯×eₙ⟧⸢γ⸣      ⧼≜⧽ Aː[t]l
+                            A⁅ ⟨r₁,r₂⟩
+                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                            A⁅ ⟨r₁₁,r₁₂⟩ ⧼=⧽ ⟦e₁⟧⸢γ⸣(x)
+                                            A⁃           ⧼⋮⧽
+                                            A⁃ ⟨rₙ₁,rₙ₂⟩ ⧼=⧽ ⟦eₙ⟧⸢γ⸣(x)
+                                            A⁃ r₁ ⧼=⧽ ⨅ᵢⱼ rᵢ₁rⱼ₂
+                                            A⁃ r₂ ⧼=⧽ ⨆ᵢⱼ rᵢ₁rⱼ₂
+                                            A⁆
+                            A⁆
+   A⁃ ⟦eⁿ⟧                ⧼≜⧽ Aː[t]l
+                              A⁅ ⟨1,1⟩
+                              A⁃ ␠⟪«where»⟫ ␠ n=0
+                              A⁆
+   A⁃ ⟦eⁿ⟧                ⧼≜⧽ Aː[t]l
+                              A⁅ ⟨r₁′,r₂′⟩
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ 𝑚𝑐3l{‹odd›(n)}
+                                              A⁃ ⟨r₁,r₂⟩ ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ r₁′ ⧼=⧽ r₁ⁿ
+                                              A⁃ r₂′ ⧼=⧽ r²ⁿ
+                                              A⁆
+                              A⁆
+   A⁃ ⟦eⁿ⟧                ⧼≜⧽ Aː[t]l
+                              A⁅ ⟨r₁″,r₂′⟩
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ 𝑚𝑐3l{‹even›(n)}
+                                              A⁃ n   ⧼≥⧽ 2
+                                              A⁃ ⟨r₁,r₂⟩ ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ r₁′ ⧼=⧽ r₁ⁿ ⊓ r₂ⁿ
+                                              A⁃ r₁″ ⧼=⧽ ‘❴Aːl@{␠}c@{␠}l
+                                                           A⁅ 0   & «if» & r₁ < 0 < r₂
+                                                           A⁃ r₁′ & «if» & r₂ < 0 ␠«or»␠ 0 < r₁
+                                                           A⁆’.
+                                              A⁃ r₂′ ⧼=⧽ r₁ⁿ ⊔ r₂ⁿ
+                                              A⁆
+                              A⁆
+   A⁃ ⟦⦑ln⦒(e)⟧⸢γ⸣(x)         ⧼≜⧽ Aː[t]l
+                              A⁅ ⟨r₁′,r₂′⟩
+                              A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                              A⁅ ⟨r₁,r₂⟩ ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                              A⁃ r₁′ ⧼=⧽ ㏑r₁
+                                              A⁃ r₂′ ⧼=⧽ ㏑r₂
+                                              A⁆
+                            A⁆
+   A⁃ ⟦⦑relu⦒(e)⟧⸢γ⸣(x) ⧼≜⧽ Aː[t]l
+                            A⁅ ⟨r₁′,r₂′⟩
+                            A⁃ ␠⟪«where»⟫ ␠ Aː[t]rcl
+                                            A⁅ ⟨r₁,r₂⟩ ⧼=⧽ ⟦e⟧⸢γ⸣(x)
+                                            A⁃ r₁′ ⧼=⧽ ‹relu›(r₁)
+                                            A⁃ r₂′ ⧼=⧽ ‹relu›(r₂)
+                                            A⁆
+                            A⁆
+   A⁆
+X⁆
+M⁆
+
+
+\bibliographystyle{plainnat}
+\bibliography{local}
+
+\end{document}
+\endinput

@@ -10,8 +10,8 @@ X= pickle.load(open("../../inputs/purchase_100_features.p", 'rb')).astype(np.flo
 y = pickle.load(open("../../inputs/purchase_100_labels.p", 'rb'))
 
 # I use one of these for the sake of sampling because lazy
-(X_trash, X_real, y_trash, y_real) = train_test_split(X, y, test_size=0.05)
-(X_train, X_test, y_train, y_test) = train_test_split(X_real, y_real, test_size=0.2)
+(X_trash, X_real, y_trash, y_real) = train_test_split(X, y, test_size=0.05, random_state=7)
+(X_train, X_test, y_train, y_test) = train_test_split(X_real, y_real, test_size=0.2, random_state=7)
 print(len(X_train), len(y_test))
 purchase_train = torch.utils.data.TensorDataset(torch.from_numpy(X_train).float(), 
                                  torch.from_numpy(y_train).long())
@@ -39,18 +39,19 @@ class Purchase_Classifier(nn.Module):
     print("test 3")
     
     
-epsilons = [10000, 100000, 1000000]
-clips  = [.1, .5]
+#epsilons = [1, 100, 10000, ]
+epsilons = [100000, 1000000]
+clips  = [.1, .2, .5]
 b = 64
 w= 256
 
 for e in epsilons:
     for t in clips:
         infos = []
-        for i in range(5):
+        for i in range(20):
             print(f"model: {w}, {e}, {t}, {b} begin")
             model = Purchase_Classifier(w)
-            info, model = er.baseline_experiment(model,
+            info, _ = er.baseline_experiment(model,
                                             purchase_train,
                                             purchase_test,
                                             epsilon=e,
@@ -62,4 +63,4 @@ for e in epsilons:
                                             lf=torch.nn.NLLLoss,
                                             print_rate=1)
             infos.append(info)
-        pickle.dump(infos, open(f"../../data/purchase/purchase_mb_{w}_{e}_{t}_{b}.b", 'wb'))
+        pickle.dump(infos, open(f"../../data/purchase/purchase_20mb_{w}_{e}_{t}_{b}.b", 'wb'))

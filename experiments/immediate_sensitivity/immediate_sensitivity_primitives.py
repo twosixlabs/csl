@@ -20,15 +20,14 @@ def reshape(view, shapes, lens):
     return tensors
 
 def clipped_autograd(model, C):
-    clipped_grads = []
     max_norms = []
     for param in model.parameters():
         t1 = torch.transpose(param.grad1, 0, 1)
+        d = tuple(range(1,len(param.grad.shape) + 1))
         if len(param.grad.shape) == 1:
             d = 1
             t = t1
         else:
-            d = (1, 2)
             t = torch.transpose(t1, 1, 2)
         norms = param.grad1.data.norm(dim=d)
         torch.equal(norms, param.grad1.norm(dim=d))
@@ -36,9 +35,10 @@ def clipped_autograd(model, C):
         c_norms = C / norms
 	
         clips_with_ones = torch.minimum(c_norms, torch.ones(c_norms.shape, device=torch.cuda.current_device()))
-        clipped_grads.append(torch.matmul(t, clips_with_ones))
+        print(param.grad.shape)
+        param.grad = torch.matmul(t, clips_with_ones)
 
-    return clipped_grads, max(max_norms)
+    return max(max_norms)
 
 
 def grad_immediate_sensitivity(model, criterion, inputs, labels, epoch):
